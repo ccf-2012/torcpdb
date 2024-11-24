@@ -194,6 +194,9 @@ def query():
     data = request.get_json()
     torname = data.get('seed_name')
     torinfo = TorrentParser.parse(torname)
+    if 'extitle' in data:
+        torinfo.subtitle = data.get('extitle')
+
     if r1 := foundInLocalDb(torinfo):
         logger.info(f'LOCAL: {r1.seed_name} ==> {r1.media_name}, {r1.tmdb_cat}-{r1.tmdb_id}')
         return recordJson(r1)
