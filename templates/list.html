@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block stylesheet %}
+<style>
+table.dataTable td {
+  font-size: 1em;
+}    
+</style>
+{% endblock %}
+
+{% block content %}
+
+    <!-- 编辑弹窗 -->
+    <div id="editModal" class="modal fade" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑记录</h5>
+                </div>
+                <div class="modal-body">        
+                    <form id="editForm" >
+                        <input type="hidden" name="id">
+                        <div>
+                            <label class="col-form-label">种子名称:</label>
+                            <input type="text" name="seed_name" required class="form-control">
+                        </div>
+                        <div>
+                            <label class="col-form-label">媒体名称:</label>
+                            <input type="text" name="media_name" required class="form-control">
+                        </div>
+                        <div>
+                            <label class="col-form-label">分类:</label>
+                            <input type="text" name="category" required class="form-control">
+                        </div>
+                        <div>
+                            <label class="col-form-label">TMDB ID:</label>
+                            <input type="number" name="tmdb_id" required class="form-control">
+                        </div>
+                        <div>
+                            <label class="col-form-label">年份:</label>
+                            <input type="number" name="year" required class="form-control">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" onclick="closeEditModal()" class="btn btn-secondary">
+                        取消
+                    </button>
+                    <button type="submit" class="btn btn-primary" >
+                        保存
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="table-responsive my-2 mx-1">
+
+        <table id="data" class="display table-striped order-column" style="width:100%">
+          <thead>
+            <tr>
+              <th></th>
+              <th>种子名称</th>
+              <th>媒体名称</th>
+              <th>加入时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      
+      
+    </div>
+
+{% endblock %} 
+
+{% block script %}
+<script>
+
+    var YajraDataTable;
+        // 打开编辑弹窗
+        function editRecord(ele, id) {
+            var tr_el = ele.closest('tr');
+            var row = YajraDataTable.row(tr_el);
+            var record = row.data();
+
+            // const modal = document.getElementById('editModal');
+            const form = document.getElementById('editForm');
+            
+            // 填充表单数据
+            form.elements.id.value = record.id;
+            form.elements.seed_name.value = record.seed_name;
+            form.elements.media_name.value = record.media_name;
+            form.elements.category.value = record.category;
+            form.elements.tmdb_id.value = record.tmdb_id;
+            form.elements.year.value = record.year;
+            
+            // 显示弹窗
+            $("#editModal").modal('show');
+        }
+
+        // 关闭编辑弹窗
+        function closeEditModal() {
+            $("#editModal").modal('hide');
+        }
+
+        // 处理编辑表单提交
+        document.getElementById('editForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            const id = data.id;
+            delete data.id;
+            
+            try {
+                const response = await fetch(`/api/records/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('更新成功');
+                    closeEditModal();
+                } else {
+                    alert('更新失败：' + result.message);
+                }
+            } catch (error) {
+                alert('更新失败：' + error);
+            }
+        };
+
+        // 删除记录
+        async function deleteRecord(id) {
+            if (!confirm('确定要删除这条记录吗？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/records/${id}`, {
+                    method: 'DELETE',
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('删除成功');
+                    loadRecords();
+                } else {
+                    alert('删除失败：' + result.message);
+                }
+            } catch (error) {
+                alert('删除失败：' + error);
+            }
+        }
+
+
+$(document).ready(function () {
+    YajraDataTable = $('#data').DataTable({
+      language: DATATABLE_LANG,
+      "pageLength": 50,
+      autoWidth: false,
+      scrollX: true,
+      full_row_select: false,
+      ajax: '/api/mediadata',
+      serverSide: true,
+      order: [[0, 'desc']],
+      columns: [
+      {
+          data: 'tmdbcat',
+          "width": "5%",
+          "render": function (data, type, row, meta) {
+            // console.log(row.tmdbposter);
+            if (row.poster_path) {
+              var s = row.tmdb_cat + '/' + row.tmdb_id;
+              return '<a class="preview" title='+row.media_name+' href="https://image.tmdb.org/t/p/w200' + row.poster_path + '" target="_blank"><img src="https://image.tmdb.org/t/p/w45' + row.poster_path + '"></a>';
+            }
+            else return ''
+          }
+
+        },
+        {
+            data: 'seed_name',
+            "width": "50%"
+        },
+        {
+            data: 'media_name',
+            "width": "25%",
+            "render": function (data, type, row, meta) {
+            if (row.tmdb_id > 0) {
+              var s = row.tmdb_cat + '/' + row.tmdb_id;
+              var s2 = (row.media_name) ? row.media_name : s;
+              var tmdbsvg = '<span class="pad"> <img src="/static/image/tmdb.svg" width="24" height="24"> </span>';
+              var imdbsvg = '<span class="pad"> <img src="/static/image/imdb.png" width="24" height="24"> </span>'
+              var tmdb_l1 = row.tmdb_id ? tmdbsvg + '<a href="https://www.themoviedb.org/' + s + '" target="_blank">' + s2 + '</a>' : '';
+              var imdb_l2 = row.imdb_id ? (imdbsvg + '<a href="https://www.imdb.com/title/' + row.imdb_id + '" target="_blank">' + row.imdb_id + '</a>') : '';
+              var imdbstr = (row.imdb_val > 1.0) ? '<span class="sub-title">' + row.imdb_val + '</span> '  : '' ;
+              return tmdb_l1 ;
+            }
+            else return ''
+          }
+        },
+        {
+          data: 'created_at',
+          "width": "12%",
+          "render": function (data) {
+            // https://stackoverflow.com/questions/8362952/javascript-output-current-datetime-in-yyyy-mm-dd-hhmsec-format
+            var date = new Date(data);
+            return date.toISOString().slice(0, 19).replace(/-/g, "/").replace("T", " ");
+          }
+        },
+        {
+          "width": "8%",
+          "render": function (data, type, row) {
+            // var linkDelete = '<a href="/mediadel/' + row.id + '">删除</a>';
+            var linkDelete = '<a href="#" onclick="deleteRecord(this, \'' + row.id + '\');return false;">' + '删除' + '</a>';
+            var linkEdit = '<a href="#" onclick="editRecord(this, \'' + row.id + '\');return false;">' + '修正' + '</a>';
+            return linkEdit + " | " + linkDelete;
+          },
+        },
+      ],
+    });
+});
+
+</script>
+{% endblock %}
