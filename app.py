@@ -168,6 +168,9 @@ def query():
     if r1 := foundInLocalDb(torinfo):
         logger.info(f'LOCAL: {r1.seed_name} ==> {r1.media_name}, {r1.tmdb_cat}-{r1.tmdb_id}')
         return recordJson(r1)
+    if not myconfig.CONFIG.tmdb_api_key:
+        logger.error('TMDb API Key 没有配置')
+        return recordNotfound()
     ts = TMDbSearcher(myconfig.CONFIG.tmdb_api_key, myconfig.CONFIG.tmdb_lang)
     if 'tmdbid' in data:
         if r := ts.searchTMDbByTMDbId(torinfo, data.get('tmdbid')):
