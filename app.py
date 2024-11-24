@@ -14,6 +14,34 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+
+from functools import wraps
+
+def abortjson():
+    return jsonify({
+                'error': 'Invalid or missing API key',
+                'status': 'unauthorized'
+            }), 401
+
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not myconfig.CONFIG.client_api_key:
+            return abortjson()
+        # 从请求头中获取 API key
+        api_key = request.headers.get('X-API-Key')
+        
+        # 从查询参数中获取 API key（可选的备选方案）
+        if not api_key:
+            api_key = request.args.get('api_key')
+        
+        # 验证 API key
+        if not api_key or api_key != myconfig.CONFIG.client_api_key:
+            return abortjson()
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # 数据模型
 class MediaRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -161,6 +189,7 @@ def saveTorInfo(torinfo):
 
 # 查询API接口
 @app.route('/api/query', methods=['POST'])
+@require_api_key
 def query():
     data = request.get_json()
     torname = data.get('seed_name')
