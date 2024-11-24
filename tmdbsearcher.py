@@ -419,7 +419,7 @@ class TMDbSearcher():
             # 检查是否是电视剧
             if movie.get('kind') in [ 'episode'] :
                 torinfo.imdb_id = 'tt'+movie.get('episode of').movieID
-                logger.error(f"提供的ID {imdb_id} 是个 episode, 剧集 为 {torinfo.imdb_id}")
+                logger.warning(f"提供的ID {imdb_id} 是个 episode, 剧集 为 {torinfo.imdb_id}")
         except Exception as e:
             logger.error(f"获取 IMDb 信息时发生错误: {e}")
         return torinfo.imdb_id

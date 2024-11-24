@@ -301,7 +301,8 @@ def setupLogger():
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
     log.disabled = True
-
+    logger.remove()
+    
     formatstr = "{time:YYYY-MM-DD HH:mm:ss} | <level>{level: <8}</level> | - <level>{message}</level>"
     logger.add(sys.stdout, format=formatstr)
 
