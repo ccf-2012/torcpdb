@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录</title>
+  <!-- 引入 Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+  <!-- 自定义样式 -->
+  <style>
+    body {
+      background-color: #f4f7fc;
+    }
+    .login-container {
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 30px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .login-container h3 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 登录表单容器 -->
+  <div class="login-container">
+    <h3>登录您的账户</h3>
+    <form action="/login" method="post">
+        <!-- 用户名输入框 -->
+      <div class="mb-3">
+        <label for="username" class="form-label">用户名</label>
+        <input type="text" class="form-control" name="username" id="username" placeholder="请输入用户名">
+      </div>
+      
+      <!-- 密码输入框 -->
+      <div class="mb-3">
+        <label for="password" class="form-label">密码</label>
+        <input type="password" class="form-control" name="password" id="password" placeholder="请输入密码">
+      </div>
+
+      <!-- 登录按钮 -->
+      <button type="submit" class="btn btn-primary w-100">登录</button>
+
+      <!-- 忘记密码链接 -->
+
+      
+      <div class="mt-2 text-center">
+        <p>还没有账户? <a href="https://github.com/ccf-2012/torll"  target="_blank">查看说明</a></p>
+      </div>
+    </form>
+  </div>
+
+  <!-- 引入 Bootstrap JS 和依赖 -->
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+</body>
+</html>

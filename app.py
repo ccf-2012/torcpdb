@@ -1,5 +1,5 @@
 # app.py
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, abort
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
@@ -8,11 +8,71 @@ from torinfo import TorrentParser
 from tmdbsearcher import TMDbSearcher
 import myconfig
 from loguru import logger
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+app.secret_key = 'torcpdb_secret_key'  # 用于签名 session
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'  # 未登录时重定向到登录页面
+login_manager.login_message = ''
+
+# torll 用户，在 config.ini 中定义
+class User(UserMixin):
+    def __init__(self, username):
+        self.id = username
+
+@login_manager.user_loader
+def load_user(username):
+    if username == myconfig.CONFIG.basicAuthUser:
+        return User(username)
+    return None
+
+
+# https://stackoverflow.com/questions/33106298/is-it-possible-to-use-flask-logins-authentication-as-simple-http-auth-for-a-res
+@login_manager.request_loader
+def load_user_from_header(request):
+    # user = User('admin')
+    # return user    
+    auth = request.authorization
+    if not auth:
+        return None
+    if (auth.username == myconfig.CONFIG.basicAuthUser) and (auth.password == myconfig.CONFIG.basicAuthPass):
+        user = User(auth.username)
+        login_user(user)  # 登录用户
+        return user
+    else:
+        abort(401)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # if current_user.is_authenticated:
+    #     return redirect('/')
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        if username == myconfig.CONFIG.basicAuthUser and password == myconfig.CONFIG.basicAuthPass:
+            user = User(username)
+            login_user(user)  # 登录用户
+            # logger.success(f'{username } 登陆成功')
+            return redirect('/')  # 登录成功后重定向到首页
+        else:
+            # logger.success(f'{username } 密码错误')
+            return '密码错误，请重试.'
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    logout_user()  # 注销用户
+    return redirect('/login')
+
 
 
 from functools import wraps
@@ -93,6 +153,7 @@ with app.app_context():
 
 
 @app.route('/api/mediadata')
+@login_required
 def apiMediaDbList():
     query = MediaRecord.query
 
@@ -141,13 +202,25 @@ def apiMediaDbList():
 
 # -------------------
 
-def foundInLocalDb(torinfo):
+def foundNameInLocal(torinfo):
     record = MediaRecord.query.filter(db.or_(
         MediaRecord.media_name == torinfo.media_title,
         MediaRecord.seed_name == torinfo.torname,
-    )).first()  # 使用 .first() 来获取第一个结果
-    return record  # 如果没有找到会返回 None
+    )).first()
+    return record
 
+def foundIMDbIdInLocal(imdb_id):
+    record = MediaRecord.query.filter(db.or_(
+        MediaRecord.imdb_id == imdb_id
+    )).first()
+    return record
+
+def foundTMDbIdInLocal(tmdb_id, tmdb_cat):
+    record = MediaRecord.query.filter(db.or_(
+        MediaRecord.tmdb_cat == tmdb_cat,
+        MediaRecord.tmdb_id == tmdb_id,
+    )).first()
+    return record
 
 def recordJson(record):
     return jsonify({
@@ -196,10 +269,15 @@ def query():
     torinfo = TorrentParser.parse(torname)
     if 'extitle' in data:
         torinfo.subtitle = data.get('extitle')
+    if 'imdbid' in data:
+        torinfo.imdb_id = data.get('imdbid')
+    if 'tmdbid' in data:
+        torinfo.tmdb_id = data.get('tmdbid')
 
-    if r1 := foundInLocalDb(torinfo):
+    if r1 := foundNameInLocal(torinfo):
         logger.info(f'LOCAL: {r1.seed_name} ==> {r1.media_name}, {r1.tmdb_cat}-{r1.tmdb_id}')
         return recordJson(r1)
+
     if not myconfig.CONFIG.tmdb_api_key:
         logger.error('TMDb API Key 没有配置')
         return recordNotfound()
@@ -210,6 +288,9 @@ def query():
             logger.info(f'TMDbId: {r2.seed_name} ==> {r2.media_name}, {r2.tmdb_cat}-{r2.tmdb_id}')
             return recordJson(r2)
     if 'imdbid' in data:
+        if r1 := foundIMDbIdInLocal(data.get('imdbid')):
+            logger.info(f'LOCAL IMDb: {r1.seed_name} ==> {r1.media_name}, {r1.tmdb_cat}-{r1.tmdb_id}')
+            return recordJson(r1)
         if r := ts.searchTMDbByIMDbId(torinfo, data.get('imdbid')):
             r3 = saveTorInfo(torinfo)
             logger.info(f'IMDbId: {r3.seed_name} ==> {r3.media_name}, {r3.tmdb_cat}-{r3.tmdb_id}')
@@ -328,6 +409,7 @@ def delete_record(id):
 
 # Web界面路由
 @app.route('/')
+@login_required
 def index():
     return render_template('list.html')
 

@@ -1,0 +1,7 @@
+sqlalchemy
+Flask-SQLAlchemy
+flask
+tmdbv3api==1.7.7
+requests
+loguru
+flask-login

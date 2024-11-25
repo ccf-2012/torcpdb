@@ -139,7 +139,7 @@
         };
 
         // 删除记录
-        async function deleteRecord(id) {
+        async function deleteRecord(ele, id) {
             if (!confirm('确定要删除这条记录吗？')) {
                 return;
             }
@@ -151,8 +151,8 @@
                 
                 const result = await response.json();
                 if (result.success) {
-                    alert('删除成功');
-                    loadRecords();
+                    // alert('删除成功');
+                    $('#data').DataTable().ajax.reload();
                 } else {
                     alert('删除失败：' + result.message);
                 }
