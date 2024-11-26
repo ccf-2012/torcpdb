@@ -63,8 +63,8 @@
           <thead>
             <tr>
               <th></th>
-              <th>种子名称</th>
               <th>媒体名称</th>
+              <th>种子名称</th>
               <th>加入时间</th>
               <th>操作</th>
             </tr>
@@ -161,6 +161,25 @@
             }
         }
 
+        function convertToLinks(input) {
+  // 将输入字符串按逗号分隔为多个部分
+  const items = input.split(',').map(item => item.trim());
+  let result = '';
+  
+  items.forEach(item => {
+    // 使用正则表达式分隔每一组数据（根据 | 分隔）
+    const parts = item.split('|');
+    if (parts.length === 2) {
+      const text = parts[0].trim();  // 提取文本部分
+      const link = parts[1].trim();  // 提取链接部分
+      
+      // 构造 HTML 链接
+      result += `<a href="${link}">${text}</a><br>`;
+    }
+  });
+  
+  return result;
+}
 
 $(document).ready(function () {
     YajraDataTable = $('#data').DataTable({
@@ -179,7 +198,7 @@ $(document).ready(function () {
           "render": function (data, type, row, meta) {
             // console.log(row.tmdbposter);
             if (row.poster_path) {
-              var s = row.tmdb_cat + '/' + row.tmdb_id;
+              var s = row.tmdb_cat + '-' + row.tmdb_id;
               return '<a class="preview" title='+row.media_name+' href="https://image.tmdb.org/t/p/w200' + row.poster_path + '" target="_blank"><img src="https://image.tmdb.org/t/p/w45' + row.poster_path + '"></a>';
             }
             else return ''
@@ -187,29 +206,34 @@ $(document).ready(function () {
 
         },
         {
-            data: 'seed_name',
-            "width": "50%"
-        },
-        {
-            data: 'media_name',
-            "width": "25%",
+            data: 'media_title',
+            "width": "35%",
             "render": function (data, type, row, meta) {
             if (row.tmdb_id > 0) {
-              var s = row.tmdb_cat + '/' + row.tmdb_id;
-              var s2 = (row.media_name) ? row.media_name : s;
-              var tmdbsvg = '<span class="pad"> <img src="/static/image/tmdb.svg" width="24" height="24"> </span>';
-              var imdbsvg = '<span class="pad"> <img src="/static/image/imdb.png" width="24" height="24"> </span>'
-              var tmdb_l1 = row.tmdb_id ? tmdbsvg + '<a href="https://www.themoviedb.org/' + s + '" target="_blank">' + s2 + '</a>' : '';
-              var imdb_l2 = row.imdb_id ? (imdbsvg + '<a href="https://www.imdb.com/title/' + row.imdb_id + '" target="_blank">' + row.imdb_id + '</a>') : '';
-              var imdbstr = (row.imdb_val > 1.0) ? '<span class="sub-title">' + row.imdb_val + '</span> '  : '' ;
-              return tmdb_l1 ;
+              var tmdb_link = row.tmdb_cat + '/' + row.tmdb_id;
+              var tmdb_title = (row.media_title) ? row.media_title : tmdb_link;
+              var tmdb_line = row.tmdb_id ? '<a href="https://www.themoviedb.org/' + tmdb_link + '" target="_blank">' + tmdb_title + '</a>' : tmdb_title;
+              var genre = '<span class="sub-title">' + row.genre_str + '</span>'
+              var tmdbcat = row.tmdb_cat == 'tv' ? '<span class="tag-tv ">'+row.tmdb_cat+'</span>' : '<span class="tag-movie">'+row.tmdb_cat+'</span>';
+              var overview = row.overview ? '<span class="sub-title">' + row.overview + '</span>' : '';
+              return tmdb_line + genre + '<br>' + tmdbcat +  overview;
             }
             else return ''
           }
         },
         {
+            data: 'torname',
+            "width": "40%",
+            "render": function (data, type, row, meta) {
+                if (row.torname) {
+                    var r = convertToLinks(row.torname);
+                    return r
+                }
+            }
+        },
+        {
           data: 'created_at',
-          "width": "12%",
+          "width": "8%",
           "render": function (data) {
             // https://stackoverflow.com/questions/8362952/javascript-output-current-datetime-in-yyyy-mm-dd-hhmsec-format
             var date = new Date(data);
@@ -217,7 +241,7 @@ $(document).ready(function () {
           }
         },
         {
-          "width": "8%",
+          "width": "12%",
           "render": function (data, type, row) {
             // var linkDelete = '<a href="/mediadel/' + row.id + '">删除</a>';
             var linkDelete = '<a href="#" onclick="deleteRecord(this, \'' + row.id + '\');return false;">' + '删除' + '</a>';

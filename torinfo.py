@@ -14,6 +14,7 @@ class TorrentInfo:
     year: Optional[int] = 0      # 年份
     # infolink
     infolink: str = ''
+    subtitle: str = ''
     # 技术参数
     resolution: Optional[str] = ''   # 分辨率 (1080p, 2160p等)
     source: Optional[str] = ''      # 来源 (WEB-DL, BluRay等)
