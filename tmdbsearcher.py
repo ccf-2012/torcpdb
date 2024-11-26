@@ -22,25 +22,25 @@ class TMDbSearcher():
             self.tmdb = None
 
 
-    def searchTMDbByTMDbId(self, torinfo, tmdbid):
+    def searchTMDbByTMDbId(self, torinfo):
         r = False
         if torinfo.tmdb_cat == 'tv':
-            r = self.searchTMDbByTMDbIdTv(torinfo, tmdbid)
+            r = self.searchTMDbByTMDbIdTv(torinfo, torinfo.tmdb_id)
         elif torinfo.tmdb_cat == 'movie':
-            r = self.searchTMDbByTMDbIdMovie(torinfo, tmdbid)
+            r = self.searchTMDbByTMDbIdMovie(torinfo, torinfo.tmdb_id)
         else:
-            r = self.searchTMDbByTMDbIdTv(torinfo, tmdbid)
+            r = self.searchTMDbByTMDbIdTv(torinfo, torinfo.tmdb_id)
             if not r:
-                r = self.searchTMDbByTMDbIdMovie(torinfo, tmdbid)
+                r = self.searchTMDbByTMDbIdMovie(torinfo, torinfo.tmdb_id)
         if r:
-            r = self.fillDetails(torinfo)
+            r = self.fillTMDbDetails(torinfo)
         return r
 
-    def searchTMDbByTMDbIdTv(self, torinfo, tmdbid):
+    def searchTMDbByTMDbIdTv(self, torinfo):
         tv = TV(self.tmdb)
-        logger.info("Search tmdbid in TV: " + tmdbid)
+        logger.info("Search tmdbid in TV: " + torinfo.tmdb_id)
         try:
-            t = tv.details(tmdbid)
+            t = tv.details(torinfo.tmdb_id)
             if t:
                 torinfo.tmdbDetails = t
                 self.saveTmdbTVResultMatch(torinfo, t)
@@ -49,11 +49,11 @@ class TMDbSearcher():
             pass
         return False
 
-    def searchTMDbByTMDbIdMovie(self, torinfo, tmdbid):
+    def searchTMDbByTMDbIdMovie(self, torinfo):
         movie = Movie(self.tmdb)
-        logger.info("Search tmdbid in Movie: " + tmdbid)
+        logger.info("Search tmdbid in Movie: " + torinfo.tmdb_id)
         try:
-            m = movie.details(tmdbid)
+            m = movie.details(torinfo.tmdb_id)
             if m:
                 torinfo.tmdbDetails = m
                 self.saveTmdbMovieResult(torinfo, m)
@@ -161,17 +161,17 @@ class TMDbSearcher():
     def containsCJK(self, str):
         return re.search(r'[\u4e00-\u9fa5]', str)
 
-    def searchTMDbByIMDbId(self, torinfo, imdbid):
-        torinfo.imdb_id = self.getIMDbInfo(torinfo, imdbid)
-        r = self._searchTMDbByIMDbId(torinfo, torinfo.imdb_id)
+    def searchTMDbByIMDbId(self, torinfo):
+        torinfo.imdb_id = self.getIMDbInfo(torinfo)
+        r = self._searchTMDbByIMDbId(torinfo)
         if r:
-            self.fillDetails(torinfo)
+            self.fillTMDbDetails(torinfo)
         return r
     
-    def _searchTMDbByIMDbId(self, torinfo, imdbid):
-        f = Find(imdbid)
-        logger.info("Search : " + imdbid)
-        t = f.find_by_imdb_id(imdb_id=imdbid)
+    def _searchTMDbByIMDbId(self, torinfo):
+        f = Find(torinfo.imdb_id)
+        logger.info("Search : " + torinfo.imdb_id)
+        t = f.find_by_imdb_id(imdb_id=torinfo.imdb_id)
         if t:
             # print(t)
 # (Pdb) p t.movie_results
@@ -278,7 +278,7 @@ class TMDbSearcher():
     def searchTMDb(self, torinfo):
         r = self._searchTMDb(torinfo)
         if r:
-            self.fillDetails(torinfo)
+            self.fillTMDbDetails(torinfo)
         return r
 
     def _searchTMDb(self, torinfo):
@@ -410,16 +410,18 @@ class TMDbSearcher():
 
 
 
-    def getIMDbInfo(self, torinfo, imdb_id):
+    def getIMDbInfo(self, torinfo):
+        if len(torinfo.imdb_id) < 2:
+            return ''
+        in_imdbid = torinfo.imdb_id
         ia = Cinemagoer()
-        torinfo.imdb_id = imdb_id
         try:
-            movie = ia.get_movie(imdb_id[2:])
+            movie = ia.get_movie(in_imdbid[2:])
             torinfo.imdb_val = movie.get('rating')
             # 检查是否是电视剧
             if movie.get('kind') in [ 'episode'] :
                 torinfo.imdb_id = 'tt'+movie.get('episode of').movieID
-                logger.warning(f"提供的ID {imdb_id} 是个 episode, 剧集 为 {torinfo.imdb_id}")
+                logger.warning(f"提供的ID {in_imdbid} 是个 episode, 剧集 为 {torinfo.imdb_id}")
         except Exception as e:
             logger.error(f"获取 IMDb 信息时发生错误: {e}")
         return torinfo.imdb_id
@@ -441,7 +443,7 @@ class TMDbSearcher():
                 logger.warning("TMDb connection failed. Trying %d " % attempts)
                 time.sleep(3)
 
-    def fillDetails(self, torinfo):
+    def fillTMDbDetails(self, torinfo):
         if not torinfo.tmdbDetails:
             self.getDetails(torinfo)
         if torinfo.tmdbDetails:

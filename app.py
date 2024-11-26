@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify, render_template, redirect, abort
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
-import os, sys
+import os, sys, re
 from torinfo import TorrentParser
 from tmdbsearcher import TMDbSearcher
 import myconfig
@@ -106,8 +106,9 @@ def require_api_key(f):
 class MediaRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
-    seed_name = db.Column(db.String(200), nullable=False)
-    media_name = db.Column(db.String(200), nullable=False)
+    torname = db.Column(db.String(200), nullable=False)
+    media_title = db.Column(db.String(200), nullable=False)
+    infolink = db.Column(db.String(200), nullable=True)
     tmdb_cat = db.Column(db.String(16))
     tmdb_id = db.Column(db.Integer)
     imdb_id = db.Column(db.String(16))
@@ -127,8 +128,8 @@ class MediaRecord(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'seed_name': self.seed_name,
-            'media_name': self.media_name,
+            'torname': self.torname,
+            'media_title': self.media_title,
             'tmdb_cat': self.tmdb_cat,
             'tmdb_id': self.tmdb_id,
             'imdb_id': self.imdb_id,
@@ -161,9 +162,10 @@ def apiMediaDbList():
     search = request.args.get('search[value]')
     if search:
         query = query.filter(db.or_(
-            MediaRecord.seed_name.like(f'%{search}%'),
-            MediaRecord.media_name.like(f'%{search}%'),
+            MediaRecord.torname.like(f'%{search}%'),
+            MediaRecord.media_title.like(f'%{search}%'),
             MediaRecord.tmdb_id.like(f'%{search}%'),
+            MediaRecord.imdb_id.like(f'%{search}%'),
         ))
     total_filtered = query.count()
 
@@ -175,7 +177,7 @@ def apiMediaDbList():
         if col_index is None:
             break
         col_name = request.args.get(f'columns[{col_index}][data]')
-        if col_name not in ['seed_name', 'media_name', 'created_at']:
+        if col_name not in ['torname', 'media_title', 'created_at']:
             col_name = 'created_at'
         descending = request.args.get(f'order[{i}][dir]') == 'desc'
         col = getattr(MediaRecord, col_name)
@@ -202,10 +204,29 @@ def apiMediaDbList():
 
 # -------------------
 
-def foundNameInLocal(torinfo):
+def parseTMDbStr(tmdbstr):
+    if tmdbstr.isnumeric():
+        return '', tmdbstr
+    m = re.search(r'(m(ovie)?|t(v)?)?[-_]?(\d+)', tmdbstr.strip(), flags=re.A | re.I)
+    if m:
+        if m[1]:
+            catstr = 'movie' if m[1].startswith('m') else 'tv'
+        else:
+            catstr = ''
+        return catstr, m[4]
+    else:
+        return '', ''
+    
+def foundTorNameInLocal(torinfo):
     record = MediaRecord.query.filter(db.or_(
-        MediaRecord.media_name == torinfo.media_title,
-        MediaRecord.seed_name == torinfo.torname,
+        MediaRecord.torname == torinfo.torname,
+    )).first()
+    return record
+
+def foundMediaTitleInLocal(torinfo):
+    record = MediaRecord.query.filter(db.and_(
+        MediaRecord.media_title == torinfo.media_title,
+        MediaRecord.year == torinfo.year,
     )).first()
     return record
 
@@ -215,7 +236,7 @@ def foundIMDbIdInLocal(imdb_id):
     )).first()
     return record
 
-def foundTMDbIdInLocal(tmdb_id, tmdb_cat):
+def foundTMDbIdInLocal(tmdb_cat, tmdb_id):
     record = MediaRecord.query.filter(db.or_(
         MediaRecord.tmdb_cat == tmdb_cat,
         MediaRecord.tmdb_id == tmdb_id,
@@ -237,8 +258,9 @@ def recordNotfound():
 def saveTorInfo(torinfo):
     gidstr = ','.join(str(e) for e in torinfo.genre_ids)
     mrec = MediaRecord(
-            seed_name=torinfo.torname,
-            media_name=torinfo.media_title,
+            torname=torinfo.torname,
+            media_title=torinfo.media_title,
+            infolink=torinfo.infolink,
             tmdb_cat=torinfo.tmdb_cat,
             tmdb_id=torinfo.tmdb_id,
             imdb_id=torinfo.imdb_id,
@@ -265,39 +287,49 @@ def saveTorInfo(torinfo):
 @require_api_key
 def query():
     data = request.get_json()
-    torname = data.get('seed_name')
+    torname = data.get('torname')
+    if not torname:
+        recordNotfound()
     torinfo = TorrentParser.parse(torname)
     if 'extitle' in data:
         torinfo.subtitle = data.get('extitle')
     if 'imdbid' in data:
         torinfo.imdb_id = data.get('imdbid')
-    if 'tmdbid' in data:
-        torinfo.tmdb_id = data.get('tmdbid')
+    if 'tmdbstr' in data:
+        torinfo.tmdb_cat, torinfo.tmdb_id = parseTMDbStr(data.get('tmdbstr'))
+    if 'infolink' in data:
+        torinfo.infolink = data.get('infolink')
 
-    if r1 := foundNameInLocal(torinfo):
-        logger.info(f'LOCAL: {r1.seed_name} ==> {r1.media_name}, {r1.tmdb_cat}-{r1.tmdb_id}')
+    if r1 := foundTorNameInLocal(torinfo):
+        logger.info(f'LOCAL: {r1.torname} ==> {r1.media_title}, {r1.tmdb_cat}-{r1.tmdb_id}')
+        return recordJson(r1)
+    if r1 := foundMediaTitleInLocal(torinfo):
+        logger.info(f'LOCAL: {r1.torname} ==> {r1.media_title}, {r1.tmdb_cat}-{r1.tmdb_id}')
         return recordJson(r1)
 
     if not myconfig.CONFIG.tmdb_api_key:
         logger.error('TMDb API Key 没有配置')
         return recordNotfound()
     ts = TMDbSearcher(myconfig.CONFIG.tmdb_api_key, myconfig.CONFIG.tmdb_lang)
-    if 'tmdbid' in data:
-        if r := ts.searchTMDbByTMDbId(torinfo, data.get('tmdbid')):
+    if 'tmdbstr' in data:
+        if r1 := foundTMDbIdInLocal(torinfo.tmdb_cat, torinfo.tmdb_id):
+            logger.info(f'LOCAL TMDb: {r1.torname} ==> {r1.media_title}, {r1.tmdb_cat}-{r1.tmdb_id}')
+            return recordJson(r1)
+        if r := ts.searchTMDbByTMDbId(torinfo):
             r2 = saveTorInfo(torinfo)
-            logger.info(f'TMDbId: {r2.seed_name} ==> {r2.media_name}, {r2.tmdb_cat}-{r2.tmdb_id}')
+            logger.info(f'TMDbId: {r2.torname} ==> {r2.media_title}, {r2.tmdb_cat}-{r2.tmdb_id}')
             return recordJson(r2)
     if 'imdbid' in data:
         if r1 := foundIMDbIdInLocal(data.get('imdbid')):
-            logger.info(f'LOCAL IMDb: {r1.seed_name} ==> {r1.media_name}, {r1.tmdb_cat}-{r1.tmdb_id}')
+            logger.info(f'LOCAL IMDb: {r1.torname} ==> {r1.media_title}, {r1.tmdb_cat}-{r1.tmdb_id}')
             return recordJson(r1)
-        if r := ts.searchTMDbByIMDbId(torinfo, data.get('imdbid')):
+        if r := ts.searchTMDbByIMDbId(torinfo):
             r3 = saveTorInfo(torinfo)
-            logger.info(f'IMDbId: {r3.seed_name} ==> {r3.media_name}, {r3.tmdb_cat}-{r3.tmdb_id}')
+            logger.info(f'IMDbId: {r3.torname} ==> {r3.media_title}, {r3.tmdb_cat}-{r3.tmdb_id}')
             return recordJson(r3)
     if s := ts.searchTMDb(torinfo):
         r4 = saveTorInfo(torinfo)
-        logger.info(f'BLIND: {r4.seed_name} ==> {r4.media_name}, {r4.tmdb_cat}-{r4.tmdb_id}')
+        logger.info(f'BLIND: {r4.torname} ==> {r4.media_title}, {r4.tmdb_cat}-{r4.tmdb_id}')
         return recordJson(r4)
 
     return recordNotfound()
