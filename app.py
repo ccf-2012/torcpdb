@@ -260,9 +260,9 @@ def parseTMDbStr(tmdbstr):
         return '', ''
     
 def foundTorNameInLocal(torinfo):
-    record = TorrentRecord.query.filter(db.or_(
+    record = TorrentRecord.query.filter(
         TorrentRecord.torname == torinfo.torname,
-    )).first()
+    ).first()
     return record.media if record else None
 
 def foundMediaTitleInLocal(torinfo):
@@ -275,13 +275,13 @@ def foundMediaTitleInLocal(torinfo):
     return None
 
 def foundIMDbIdInLocal(imdb_id):
-    record = MediaRecord.query.filter(db.or_(
+    record = MediaRecord.query.filter(db.and_(
         MediaRecord.imdb_id == imdb_id
     )).first()
     return record
 
 def foundTMDbIdInLocal(tmdb_cat, tmdb_id):
-    record = MediaRecord.query.filter(db.or_(
+    record = MediaRecord.query.filter(db.and_(
         MediaRecord.tmdb_cat == tmdb_cat,
         MediaRecord.tmdb_id == tmdb_id,
     )).first()
