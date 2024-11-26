@@ -192,7 +192,7 @@ with app.app_context():
 @app.route('/api/mediadata')
 @login_required
 def apiMediaDbList():
-    query = MediaRecord.query.join(TorrentRecord, MediaRecord.id==TorrentRecord.media_id)
+    query = MediaRecord.query.join(TorrentRecord, TorrentRecord.media_id==MediaRecord.id)
 
     # search filter
     search = request.args.get('search[value]')
@@ -266,11 +266,13 @@ def foundTorNameInLocal(torinfo):
     return record.media if record else None
 
 def foundMediaTitleInLocal(torinfo):
-    record = MediaRecord.query.filter(db.and_(
-        MediaRecord.media_title == torinfo.media_title,
-        MediaRecord.year == torinfo.year,
-    )).first()
-    return record
+    if torinfo.media_title and (torinfo.year > 0):
+        record = MediaRecord.query.filter(db.and_(
+            MediaRecord.media_title == torinfo.media_title,
+            MediaRecord.year == torinfo.year,
+        )).first()
+        return record
+    return None
 
 def foundIMDbIdInLocal(imdb_id):
     record = MediaRecord.query.filter(db.or_(
