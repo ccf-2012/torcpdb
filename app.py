@@ -303,6 +303,8 @@ def recordNotfound():
 
 
 def saveTorrentRecord(mediarecord, torinfo):
+    if not torinfo.infolink:
+        return None
     trec = TorrentRecord(
         torname=torinfo.torname,
         infolink=torinfo.infolink,
