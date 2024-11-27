@@ -21,10 +21,6 @@
                     <form id="editForm" >
                         <input type="hidden" name="id">
                         <div>
-                            <label class="col-form-label">种子名称:</label>
-                            <input type="text" name="seed_name" required class="form-control">
-                        </div>
-                        <div>
                             <label class="col-form-label">媒体名称:</label>
                             <input type="text" name="media_name" required class="form-control">
                         </div>
@@ -93,9 +89,9 @@
             
             // 填充表单数据
             form.elements.id.value = record.id;
-            form.elements.seed_name.value = record.seed_name;
-            form.elements.media_name.value = record.media_name;
-            form.elements.category.value = record.category;
+            // form.elements.seed_name.value = record.seed_name;
+            form.elements.media_name.value = record.media_title;
+            form.elements.category.value = record.tmdb_cat;
             form.elements.tmdb_id.value = record.tmdb_id;
             form.elements.year.value = record.year;
             
