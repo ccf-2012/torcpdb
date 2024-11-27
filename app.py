@@ -109,9 +109,19 @@ GENRE_IDS = {28: '动作', 12: '冒险', 16: '动画', 35: '喜剧', 80: '犯罪
              10765: '科幻奇幻', 10766: '肥皂剧', 10767: '脱口秀', 10768: '战争政治'}
 
 
+def tryint(instr):
+    try:
+        string_int = int(instr)
+    except ValueError:    
+        string_int = 0
+    return string_int
+
+
 def genreid2str(idstr):
-    idlist = idstr.split(',')
-    genre_names = [GENRE_IDS.get(int(id), '') for id in idlist if int(id) in GENRE_IDS]
+    idlist = [tryint(z) for z in idstr.split(',')]
+    genre_names = ''
+    if idlist:
+        genre_names = [GENRE_IDS.get(id, '') for id in idlist if id in GENRE_IDS]
     
     # 返回结果，空格分隔
     return ' '.join(genre_names)
