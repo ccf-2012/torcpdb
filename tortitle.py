@@ -4,7 +4,7 @@ import json
 import string
 import argparse
 from pprint import pprint
-from torcp.torcategory import cutExt
+from torcategory import cutExt
 
 
 def isFullAscii(str):

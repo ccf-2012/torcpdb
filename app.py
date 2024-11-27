@@ -17,7 +17,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-app.secret_key = 'torcpdb_secret_key'  # 用于签名 session
+app.secret_key = 'torcp_db_key'  # 用于签名 session
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'  # 未登录时重定向到登录页面
