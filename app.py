@@ -150,7 +150,7 @@ class TorrentRecord(db.Model):
 class MediaRecord(db.Model):
     __tablename__ = "media_table"
     id = db.Column(db.Integer, primary_key=True)
-    torrents = db.relationship('TorrentRecord', back_populates='media', lazy='dynamic')
+    torrents = db.relationship('TorrentRecord', back_populates='media', cascade="all,delete")
 
     created_at = db.Column(db.DateTime, default=datetime.now)
     # torname = db.Column(db.String(200), nullable=False)
