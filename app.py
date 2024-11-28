@@ -335,6 +335,8 @@ def saveMediaRecord(torinfo):
         infolink=torinfo.infolink,
         subtitle=torinfo.subtitle,
     )
+    if not torinfo.media_title:
+        logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
     mrec = MediaRecord(
             # 默认以 media_title 作为匹配
             torname_regex=torinfo.media_title,
