@@ -283,6 +283,10 @@ def foundTorNameRegexInLocal(torinfo):
         record = MediaRecord.query.filter(
             literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex)
         ).first()
+        if not record.torname_regex:
+            logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
+            return None
+
         return record
     return None
 
@@ -329,14 +333,15 @@ def saveTorrentRecord(mediarecord, torinfo):
 
 
 def saveMediaRecord(torinfo):
+    if not torinfo.media_title:
+        logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+
     gidstr = ','.join(str(e) for e in torinfo.genre_ids)
     trec = TorrentRecord(
         torname=torinfo.torname,
         infolink=torinfo.infolink,
         subtitle=torinfo.subtitle,
     )
-    if not torinfo.media_title:
-        logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
     mrec = MediaRecord(
             # 默认以 media_title 作为匹配
             torname_regex=torinfo.media_title,
@@ -370,8 +375,13 @@ def query():
     data = request.get_json()
     torname = data.get('torname')
     if not torname:
+        logger.error(f'no torname')
         recordNotfound()
     torinfo = TorrentParser.parse(torname)
+    if not torinfo.media_title:
+        logger.error(f'empty: torinfo.media_title ')
+        recordNotfound()
+
     if 'extitle' in data:
         torinfo.subtitle = data.get('extitle')
     if 'imdbid' in data:
