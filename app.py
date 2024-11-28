@@ -283,7 +283,7 @@ def foundTorNameRegexInLocal(torinfo):
         record = MediaRecord.query.filter(
             literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex)
         ).first()
-        if not record.torname_regex:
+        if record and not record.torname_regex:
             logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
             return None
 
