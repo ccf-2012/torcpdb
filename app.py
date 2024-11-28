@@ -516,6 +516,7 @@ def delete_record(id):
 def index():
     return render_template('list.html')
 
+LOG_FILE_NAME = "torcpdb.log"
 def setupLogger():
     import logging
     log = logging.getLogger('werkzeug')
@@ -524,6 +525,7 @@ def setupLogger():
     logger.remove()
     
     formatstr = "{time:YYYY-MM-DD HH:mm:ss} | <level>{level: <8}</level> | - <level>{message}</level>"
+    logger.add(LOG_FILE_NAME, format=formatstr, rotation="500 MB") 
     logger.add(sys.stdout, format=formatstr)
 
 
