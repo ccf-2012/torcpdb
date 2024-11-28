@@ -19,7 +19,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 app.secret_key = 'torcp_db_key'  # 用于签名 session
-app.config["SESSION_COOKIE_SAMESITE"] = None
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -47,8 +46,8 @@ def load_user_from_header(request):
     if not auth:
         return None
     if (auth.username == myconfig.CONFIG.basicAuthUser) and (auth.password == myconfig.CONFIG.basicAuthPass):
-        user = User(auth.username)
-        login_user(user)  # 登录用户
+        user = User(auth.username, remember=True)
+        login_user(user, remember=True)  # 登录用户
         return user
     else:
         abort(401)
@@ -64,7 +63,7 @@ def login():
 
         if username == myconfig.CONFIG.basicAuthUser and password == myconfig.CONFIG.basicAuthPass:
             user = User(username)
-            login_user(user)  # 登录用户
+            login_user(user, remember=True)  # 登录用户
             # logger.success(f'{username } 登陆成功')
             return redirect('/')  # 登录成功后重定向到首页
         else:
