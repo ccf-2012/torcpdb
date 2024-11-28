@@ -65,10 +65,10 @@ class TMDbSearcher():
     def saveTmdbTVResultMatch(self, torinfo, result):
         if result:
             if hasattr(result, 'name'):
-                torinfo.media_title = result.name
+                torinfo.tmdb_title = result.name
                 # print('name: ' + result.name)
             elif hasattr(result, 'original_name'):
-                torinfo.media_title = result.original_name
+                torinfo.tmdb_title = result.original_name
                 # print('original_name: ' + result.original_name)
             torinfo.tmdb_id = result.id
             torinfo.tmdb_cat = 'tv'
@@ -93,18 +93,18 @@ class TMDbSearcher():
                 torinfo.genre_ids = [x['id'] for x in result.genres]
             if hasattr(result, 'genre_ids'):
                 torinfo.genre_ids = result.genre_ids
-            logger.info('Found [%d]: %s' % (torinfo.tmdb_id, torinfo.media_title))
+            logger.info('Found [%d]: %s' % (torinfo.tmdb_id, torinfo.tmdb_title))
         else:
-            logger.info('Not match in tmdb: [%s] ' % (torinfo.media_title))
+            logger.info('Not match in tmdb: [%s] ' % (torinfo.tmdb_title))
 
         return result is not None
 
 
     def saveTmdbMovieResult(self, torinfo, result):
         if hasattr(result, 'title'):
-            torinfo.media_title = result.title
+            torinfo.tmdb_title = result.title
         elif hasattr(result, 'original_title'):
-            torinfo.media_title = result.original_title
+            torinfo.tmdb_title = result.original_title
         # if hasattr(result, 'media_type'):
         #     self.ccfcat = transToCCFCat(result.media_type, self.ccfcat)
         torinfo.tmdb_id = result.id
@@ -131,7 +131,7 @@ class TMDbSearcher():
         if hasattr(result, 'genre_ids'):
             torinfo.genre_ids = result.genre_ids
         
-        logger.info('Found [%d]: %s' % (torinfo.tmdb_id, torinfo.media_title))
+        logger.info('Found [%d]: %s' % (torinfo.tmdb_id, torinfo.tmdb_title))
         return True
 
     def getYear(self, datestr):

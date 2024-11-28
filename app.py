@@ -1,6 +1,7 @@
 # app.py
 from flask import Flask, request, jsonify, render_template, redirect, abort
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import literal
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -153,8 +154,8 @@ class MediaRecord(db.Model):
     torrents = db.relationship('TorrentRecord', back_populates='media', cascade="all,delete")
 
     created_at = db.Column(db.DateTime, default=datetime.now)
-    # torname = db.Column(db.String(200), nullable=False)
-    media_title = db.Column(db.String(200), nullable=False)
+    torname_regex = db.Column(db.String(200), nullable=False)
+    tmdb_title = db.Column(db.String(200), nullable=False)
     tmdb_cat = db.Column(db.String(16))
     tmdb_id = db.Column(db.Integer)
     imdb_id = db.Column(db.String(16))
@@ -174,7 +175,8 @@ class MediaRecord(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'media_title': self.media_title,
+            'torname_regex': self.torname_regex,
+            'tmdb_title': self.tmdb_title,
             'tmdb_cat': self.tmdb_cat,
             'tmdb_id': self.tmdb_id,
             'imdb_id': self.imdb_id,
@@ -209,7 +211,7 @@ def apiMediaDbList():
     if search:
         query = query.filter(db.or_(
             TorrentRecord.torname.like(f'%{search}%'),
-            MediaRecord.media_title.like(f'%{search}%'),
+            MediaRecord.tmdb_title.like(f'%{search}%'),
             MediaRecord.tmdb_id.like(f'%{search}%'),
             MediaRecord.imdb_id.like(f'%{search}%'),
         ))
@@ -223,7 +225,7 @@ def apiMediaDbList():
         if col_index is None:
             break
         col_name = request.args.get(f'columns[{col_index}][data]')
-        if col_name not in ['torname', 'media_title', 'created_at']:
+        if col_name not in ['torname_regex', 'tmdb_title', 'created_at']:
             col_name = 'created_at'
         descending = request.args.get(f'order[{i}][dir]') == 'desc'
         col = getattr(MediaRecord, col_name)
@@ -275,12 +277,11 @@ def foundTorNameInLocal(torinfo):
     ).first()
     return record.media if record else None
 
-def foundMediaTitleInLocal(torinfo):
-    if torinfo.media_title and (torinfo.year > 0):
-        record = MediaRecord.query.filter(db.and_(
-            MediaRecord.media_title == torinfo.media_title,
-            MediaRecord.year == torinfo.year,
-        )).first()
+def foundTorNameRegexInLocal(torinfo):
+    if torinfo.media_title:
+        record = MediaRecord.query.filter(
+            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex)
+        ).first()
         return record
     return None
 
@@ -334,8 +335,9 @@ def saveMediaRecord(torinfo):
         subtitle=torinfo.subtitle,
     )
     mrec = MediaRecord(
-            # torname=torinfo.torname,
-            media_title=torinfo.media_title,
+            # 默认以 media_title 作为匹配
+            torname_regex=torinfo.media_title,
+            tmdb_title=torinfo.tmdb_title,
             tmdb_cat=torinfo.tmdb_cat,
             tmdb_id=torinfo.tmdb_id,
             imdb_id=torinfo.imdb_id,
@@ -376,84 +378,67 @@ def query():
     if 'infolink' in data:
         torinfo.infolink = data.get('infolink')
 
+    # 完全同名 种子
     if r1 := foundTorNameInLocal(torinfo):
-        logger.info(f'LOCAL: {torinfo.torname} ==> {r1.media_title}, {r1.tmdb_cat}-{r1.tmdb_id}')
+        logger.info(f'LOCAL: {torinfo.torname} ==> {r1.tmdb_title}, {r1.tmdb_cat}-{r1.tmdb_id}')
         return recordJson(r1)
-    if mrec := foundMediaTitleInLocal(torinfo):
-        trec = saveTorrentRecord(mrec, torinfo)
-        logger.info(f'LOCAL: {torinfo.torname} ==> {mrec.media_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
-        return recordJson(mrec)
 
     if not myconfig.CONFIG.tmdb_api_key:
         logger.error('TMDb API Key 没有配置')
         return recordNotfound()
     ts = TMDbSearcher(myconfig.CONFIG.tmdb_api_key, myconfig.CONFIG.tmdb_lang)
+    # 直接给了TMDb 
     if 'tmdbstr' in data:
+        # 直接给了TMDb 先查本地
         if mrec := foundTMDbIdInLocal(torinfo.tmdb_cat, torinfo.tmdb_id):
             trec = saveTorrentRecord(mrec, torinfo)
-            logger.info(f'LOCAL TMDb: {torinfo.torname} ==> {mrec.media_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+            logger.info(f'LOCAL TMDb: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
             return recordJson(mrec)
+        # 直接给了TMDb 本地没有，去 TMDb 查
         if r := ts.searchTMDbByTMDbId(torinfo):
             r2 = saveMediaRecord(torinfo)
-            logger.info(f'TMDbId: {torinfo.torname} ==> {r2.media_title}, {r2.tmdb_cat}-{r2.tmdb_id}')
+            logger.info(f'TMDbId: {torinfo.torname} ==> {r2.tmdb_title}, {r2.tmdb_cat}-{r2.tmdb_id}')
             return recordJson(r2)
     if 'imdbid' in data:
+        # 有IMDb 先查本地
         if mrec := foundIMDbIdInLocal(data.get('imdbid')):
             trec = saveTorrentRecord(mrec, torinfo)
-            logger.info(f'LOCAL IMDb: {torinfo.torname} ==> {mrec.media_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+            logger.info(f'LOCAL IMDb: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
             return recordJson(mrec)
+        # 有IMDb 本地没有，去 TMDb 查
         if r := ts.searchTMDbByIMDbId(torinfo):
             r3 = saveMediaRecord(torinfo)
-            logger.info(f'IMDbId: {torinfo.torname} ==> {r3.media_title}, {r3.tmdb_cat}-{r3.tmdb_id}')
+            logger.info(f'IMDbId: {torinfo.torname} ==> {r3.tmdb_title}, {r3.tmdb_cat}-{r3.tmdb_id}')
             return recordJson(r3)
+    # TMDb 和 IMDb 都没给，先查本地 TorName Regex
+    if mrec := foundTorNameRegexInLocal(torinfo):
+        trec = saveTorrentRecord(mrec, torinfo)
+        logger.info(f'LOCAL: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+        return recordJson(mrec)
+    # TMDb 和 IMDb 都没给，本地 TorName Regex 没找到，去 Blind 搜
     if s := ts.searchTMDb(torinfo):
         if mrec := foundTMDbIdInLocal(torinfo.tmdb_cat, torinfo.tmdb_id):
             trec = saveTorrentRecord(mrec, torinfo)
-            logger.info(f'LOCAL BLIND: {torinfo.torname} ==> {mrec.media_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+            logger.info(f'LOCAL BLIND: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
             return recordJson(mrec)
         r4 = saveMediaRecord(torinfo)
-        logger.info(f'BLIND: {torinfo.torname} ==> {r4.media_title}, {r4.tmdb_cat}-{r4.tmdb_id}')
+        logger.info(f'BLIND: {torinfo.torname} ==> {r4.tmdb_title}, {r4.tmdb_cat}-{r4.tmdb_id}')
         return recordJson(r4)
 
     return recordNotfound()
 
 
 
-# 查询API接口
-@app.route('/api/query2', methods=['POST'])
-def query_media():
-    data = request.get_json()
-    torname = data.get('seed_name')
-    torinfo = TorrentParser.parse(torname)
-    media_name = torinfo.media_name
-    # 在数据库中查找匹配记录
-    record = MediaRecord.query.filter(db.or_(
-        MediaRecord.media_name.like(f'%{media_name}%'),
-        MediaRecord.seed_name.like(f'%{media_name}%'),
-    )).first()
-    if record:
-        return jsonify({
-            'success': True,
-            'data': record.to_dict()
-        })
-    
-    # TODO: 这里可以添加外部API调用来获取正确的媒体信息
-    # 示例返回
-    return jsonify({
-        'success': False,
-        'message': '未找到匹配记录'
-    })
-
-# 记录API接口
+# 新增 API接口
 @app.route('/api/record', methods=['POST'])
 def record_media():
     data = request.get_json()
     
     try:
         new_record = MediaRecord(
-            seed_name=data['seed_name'],
-            media_name=data['media_name'],
-            category=data['category'],
+            torname_regex=data['torname_regex'],
+            tmdb_title=data['tmdb_title'],
+            tmdb_cat=data['tmdb_cat'],
             tmdb_id=data['tmdb_id'],
             year=data['year']
         )
@@ -480,16 +465,16 @@ def get_records():
         'data': [record.to_dict() for record in records]
     })
 
-# 更新记录
+# 修改 记录
 @app.route('/api/records/<int:id>', methods=['PUT'])
 def update_record(id):
     record = MediaRecord.query.get_or_404(id)
     data = request.get_json()
     
     try:
-        record.seed_name = data.get('seed_name', record.seed_name)
-        record.media_name = data.get('media_name', record.media_name)
-        record.category = data.get('category', record.category)
+        record.torname_regex = data.get('torname_regex', record.torname_regex)
+        record.tmdb_title = data.get('tmdb_title', record.tmdb_title)
+        record.tmdb_cat = data.get('tmdb_cat', record.tmdb_cat)
         record.tmdb_id = data.get('tmdb_id', record.tmdb_id)
         record.year = data.get('year', record.year)
         

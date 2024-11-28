@@ -9,6 +9,7 @@ class TorrentInfo:
     # 基本信息
     torname: str = ''             # 种子文件名
     media_title: str = ''         # 剥离出的 媒体标题
+    tmdb_title: str = ''          # 搜索得到的 媒体标题
     season: Optional[str]  = ''    # 季度 (如 S01)
     episode: Optional[str] = ''   # 集 (如 E06)
     year: Optional[int] = 0      # 年份
@@ -94,6 +95,7 @@ class TorrentParser:
         t= TorrentInfo()
         t.tmdb_cat=transFromCCFCat(tc.ccfcat)
         t.media_title=title
+        t.tmdb_title = ''
         t.torname=torname
         t.season=season
         t.episode=episode

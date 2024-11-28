@@ -19,22 +19,26 @@
                 </div>
                 <div class="modal-body">        
                     <form id="editForm" >
-                        <input type="hidden" name="id">
+                        <input type="hidden" name="id" id="id">
                         <div>
-                            <label class="col-form-label">媒体名称:</label>
-                            <input type="text" name="media_name" required class="form-control">
+                            <label class="col-form-label">种子名称的 正则特征:</label>
+                            <input type="text" id="torname_regex" name="torname_regex" required class="form-control">
+                        </div>
+                        <div>
+                            <label class="col-form-label">对应的 媒体名称:</label>
+                            <input type="text" id="tmdb_title" name="tmdb_title" required class="form-control">
                         </div>
                         <div>
                             <label class="col-form-label">分类:</label>
-                            <input type="text" name="category" required class="form-control">
+                            <input type="text" id="tmdb_cat" name="tmdb_cat" required class="form-control">
                         </div>
                         <div>
                             <label class="col-form-label">TMDB ID:</label>
-                            <input type="number" name="tmdb_id" required class="form-control">
+                            <input type="number" id="tmdb_id" name="tmdb_id" required class="form-control">
                         </div>
                         <div>
                             <label class="col-form-label">年份:</label>
-                            <input type="number" name="year" required class="form-control">
+                            <input type="number" id="year" name="year" required class="form-control">
                         </div>
                     </form>
                 </div>
@@ -43,7 +47,7 @@
                     <button type="button" onclick="closeEditModal()" class="btn btn-secondary">
                         取消
                     </button>
-                    <button type="submit" class="btn btn-primary" >
+                    <button type="submit" id="submitButton" class="btn btn-primary" >
                         保存
                     </button>
                 </div>
@@ -71,114 +75,145 @@
       
       
     </div>
-
+    <div class="d-flex justify-content-end  mt-3">
+        <div class="btn-group" role="group " aria-label="select operation">
+          <button id="addbtn" type="button" class="btn btn-warning mx-1 btn-sm">新增记录</button>
+        </div>
+      </div>
 {% endblock %} 
 
 {% block script %}
 <script>
 
-    var YajraDataTable;
-        // 打开编辑弹窗
-        function editRecord(ele, id) {
-            var tr_el = ele.closest('tr');
-            var row = YajraDataTable.row(tr_el);
-            var record = row.data();
+    var theDataTable;
 
-            // const modal = document.getElementById('editModal');
-            const form = document.getElementById('editForm');
-            
-            // 填充表单数据
-            form.elements.id.value = record.id;
-            // form.elements.seed_name.value = record.seed_name;
-            form.elements.media_name.value = record.media_title;
-            form.elements.category.value = record.tmdb_cat;
-            form.elements.tmdb_id.value = record.tmdb_id;
-            form.elements.year.value = record.year;
-            
-            // 显示弹窗
-            $("#editModal").modal('show');
-        }
+    // 打开编辑弹窗
+    function editRecord(ele, id) {
+        var tr_el = ele.closest('tr');
+        var row = theDataTable.row(tr_el);
+        var record = row.data();
 
-        // 关闭编辑弹窗
-        function closeEditModal() {
-            $("#editModal").modal('hide');
-        }
+        $("#id").val(record.id)
+        $("#torname_regex").val(record.torname_regex)
+        $("#tmdb_title").val(record.tmdb_title)
+        $("#tmdb_cat").val(record.tmdb_cat)
+        $("#tmdb_id").val(record.tmdb_id)
+        $("#year").val(record.year)
 
-        // 处理编辑表单提交
-        document.getElementById('editForm').onsubmit = async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
-            const id = data.id;
-            delete data.id;
-            
-            try {
-                const response = await fetch(`/api/records/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert('更新成功');
-                    closeEditModal();
-                } else {
-                    alert('更新失败：' + result.message);
-                }
-            } catch (error) {
-                alert('更新失败：' + error);
-            }
+        // 显示弹窗
+        $("#editModal").modal('show');
+    }
+
+    // 关闭编辑弹窗
+    function closeEditModal() {
+        $("#editModal").modal('hide');
+    }
+
+    $("#addbtn").click(function(){
+        $("#torname_regex").val('')
+        $("#tmdb_title").val('')
+        $("#tmdb_cat").val('')
+        $("#tmdb_id").val('')
+        $("#year").val(0)
+        // 显示弹窗
+        $("#editModal").modal('show');
+    });    
+
+    $("#submitButton").click(function(){
+        const form = document.getElementById('editForm');        
+        var recordId =  $("#id").val();
+        var requestData = {
+            torname_regex:  $("#torname_regex").val(),
+            tmdb_title: $("#tmdb_title").val(),
+            tmdb_cat: $("#tmdb_cat").val(),
+            tmdb_id: $("#tmdb_id").val(),
+            year: $("#year").val(),
         };
 
-        // 删除记录
-        async function deleteRecord(ele, id) {
-            if (!confirm('确定要删除这条记录吗？')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/records/${id}`, {
-                    method: 'DELETE',
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    // alert('删除成功');
-                    $('#data').DataTable().ajax.reload();
-                } else {
-                    alert('删除失败：' + result.message);
-                }
-            } catch (error) {
-                alert('删除失败：' + error);
-            }
+        if (recordId) {
+            // 使用 Fetch API 发送 PUT 请求
+            fetch(`/api/records/${recordId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // alert("数据更新成功!");
+                $('#data').DataTable().ajax.reload();
+                // closeEditModal();
+                $('#editModal').modal('hide');  // 关闭 Modal
+            })
+            .catch(error => {
+                alert("数据更新失败: " + error);
+            });
+        } else {
+            fetch(`/api/records`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                $('#data').DataTable().ajax.reload();
+                $('#editModal').modal('hide');  // 关闭 Modal
+            })
+            .catch(error => {
+                alert("数据更新失败: " + error);
+            });
         }
+    });    
 
-        function convertToLinks(input) {
-  // 将输入字符串按逗号分隔为多个部分
-  const items = input.split(',').map(item => item.trim());
-  let result = '';
-  
-  items.forEach(item => {
-    // 使用正则表达式分隔每一组数据（根据 | 分隔）
-    const parts = item.split('|');
-    if (parts.length === 2) {
-      const text = parts[0].trim();  // 提取文本部分
-      const link = parts[1].trim();  // 提取链接部分
-      
-      // 构造 HTML 链接
-      result += `<a href="${link}">${text}</a><br>`;
+
+    // 删除记录
+    async function deleteRecord(ele, id) {
+        if (!confirm('确定要删除这条记录吗？')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/records/${id}`, {
+                method: 'DELETE',
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                // alert('删除成功');
+                $('#data').DataTable().ajax.reload();
+            } else {
+                alert('删除失败：' + result.message);
+            }
+        } catch (error) {
+            alert('删除失败：' + error);
+        }
     }
-  });
-  
-  return result;
-}
+
+    function convertToLinks(input) {
+        // 将输入字符串按逗号分隔为多个部分
+        const items = input.split(',').map(item => item.trim());
+        let result = '';
+        
+        items.forEach(item => {
+            // 使用正则表达式分隔每一组数据（根据 | 分隔）
+            const parts = item.split('|');
+            if (parts.length === 2) {
+                const text = parts[0].trim();  // 提取文本部分
+                const link = parts[1].trim();  // 提取链接部分
+                
+                // 构造 HTML 链接
+                result += `<a href="${link}">${text}</a><br>`;
+            }
+        });
+        return result;
+    }
+
 
 $(document).ready(function () {
-    YajraDataTable = $('#data').DataTable({
+    theDataTable = $('#data').DataTable({
       language: DATATABLE_LANG,
       "pageLength": 50,
       autoWidth: false,
@@ -202,12 +237,12 @@ $(document).ready(function () {
 
         },
         {
-            data: 'media_title',
+            data: 'tmdb_title',
             "width": "35%",
             "render": function (data, type, row, meta) {
             if (row.tmdb_id > 0) {
               var tmdb_link = row.tmdb_cat + '/' + row.tmdb_id;
-              var tmdb_title = (row.media_title) ? row.media_title : tmdb_link;
+              var tmdb_title = (row.tmdb_title) ? row.tmdb_title : tmdb_link;
               var tmdb_line = row.tmdb_id ? '<a href="https://www.themoviedb.org/' + tmdb_link + '" target="_blank">' + tmdb_title + '</a>' : tmdb_title;
               var genre = '<span class="sub-title">' + row.genre_str + '</span>'
               var tmdbcat = row.tmdb_cat == 'tv' ? '<span class="tag-tv ">'+row.tmdb_cat+'</span>' : '<span class="tag-movie">'+row.tmdb_cat+'</span>';
@@ -247,6 +282,8 @@ $(document).ready(function () {
         },
       ],
     });
+
+
 });
 
 </script>
