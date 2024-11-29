@@ -120,6 +120,8 @@ def tryint(instr):
 
 
 def genreid2str(idstr):
+    if not idstr:
+        return ''
     idlist = [tryint(z) for z in idstr.split(',')]
     genre_names = ''
     if idlist:
@@ -130,6 +132,8 @@ def genreid2str(idstr):
 
 
 def truncate_string(input_string, max_length=128):
+    if not input_string:
+        return ''
     input_string = input_string.strip()
     # 如果字符串的长度大于最大长度，则截取并加上 '...'
     if len(input_string) > max_length:
@@ -205,7 +209,7 @@ with app.app_context():
 @app.route('/api/mediadata')
 @login_required
 def apiMediaDbList():
-    query = MediaRecord.query.join(TorrentRecord, TorrentRecord.media_id==MediaRecord.id)
+    query = MediaRecord.query.outerjoin(TorrentRecord, TorrentRecord.media_id==MediaRecord.id)
 
     # search filter
     search = request.args.get('search[value]')
@@ -246,7 +250,9 @@ def apiMediaDbList():
     datalist = []
     for mediaitem in query:
         data = mediaitem.to_dict()
-        data['torname'] = ','.join([z.torname+'|'+z.infolink for z in mediaitem.torrents])
+        data['torname'] = 'abc'
+        if mediaitem.torrents:
+            data['torname'] = ','.join([z.torname+'|'+z.infolink for z in mediaitem.torrents])
         datalist.append(data)
     # response
     return {
@@ -454,25 +460,25 @@ def query():
 
 
 # 新增 API接口
-@app.route('/api/record', methods=['POST'])
+@app.route('/api/records', methods=['POST'])
 def record_media():
     data = request.get_json()
     
     try:
-        new_record = MediaRecord(
-            torname_regex=data['torname_regex'],
-            tmdb_title=data['tmdb_title'],
-            tmdb_cat=data['tmdb_cat'],
-            tmdb_id=data['tmdb_id'],
-            year=data['year']
-        )
-        
-        db.session.add(new_record)
-        db.session.commit()
-        
+        t = TorrentInfo()
+        t.torname = '<自定义标题解析>'
+        t.infolink = '/'
+        t.subtitle = '<自定义标题解析>'
+        t.media_title=data['torname_regex']
+        t.tmdb_title=data['tmdb_title']
+        t.tmdb_cat=data['tmdb_cat']
+        t.tmdb_id=data['tmdb_id']
+        t.year=data['year']
+        mrec = saveMediaRecord(t)
+
         return jsonify({
             'success': True,
-            'data': new_record.to_dict()
+            'data': mrec.to_dict()
         })
     except Exception as e:
         return jsonify({
