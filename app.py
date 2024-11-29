@@ -335,6 +335,7 @@ def saveTorrentRecord(mediarecord, torinfo):
 def saveMediaRecord(torinfo):
     if not torinfo.media_title:
         logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+        return None
 
     gidstr = ','.join(str(e) for e in torinfo.genre_ids)
     trec = TorrentRecord(
@@ -410,8 +411,11 @@ def query():
         # 直接给了TMDb 本地没有，去 TMDb 查
         if r := ts.searchTMDbByTMDbId(torinfo):
             r2 = saveMediaRecord(torinfo)
-            logger.info(f'TMDbId: {torinfo.torname} ==> {r2.tmdb_title}, {r2.tmdb_cat}-{r2.tmdb_id}')
-            return recordJson(r2)
+            if r2:
+                logger.info(f'TMDbId: {torinfo.torname} ==> {r2.tmdb_title}, {r2.tmdb_cat}-{r2.tmdb_id}')
+                return recordJson(r2)
+            else:
+                return recordNotfound()
     if 'imdbid' in data:
         # 有IMDb 先查本地
         if mrec := foundIMDbIdInLocal(data.get('imdbid')):
@@ -421,8 +425,12 @@ def query():
         # 有IMDb 本地没有，去 TMDb 查
         if r := ts.searchTMDbByIMDbId(torinfo):
             r3 = saveMediaRecord(torinfo)
-            logger.info(f'IMDbId: {torinfo.torname} ==> {r3.tmdb_title}, {r3.tmdb_cat}-{r3.tmdb_id}')
-            return recordJson(r3)
+            if r3:
+                logger.info(f'IMDbId: {torinfo.torname} ==> {r3.tmdb_title}, {r3.tmdb_cat}-{r3.tmdb_id}')
+                return recordJson(r3)
+            else:
+                return recordNotfound()
+            
     # TMDb 和 IMDb 都没给，先查本地 TorName Regex
     if mrec := foundTorNameRegexInLocal(torinfo):
         trec = saveTorrentRecord(mrec, torinfo)
@@ -435,8 +443,11 @@ def query():
             logger.info(f'LOCAL BLIND: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
             return recordJson(mrec)
         r4 = saveMediaRecord(torinfo)
-        logger.info(f'BLIND: {torinfo.torname} ==> {r4.tmdb_title}, {r4.tmdb_cat}-{r4.tmdb_id}')
-        return recordJson(r4)
+        if r4:
+            logger.info(f'BLIND: {torinfo.torname} ==> {r4.tmdb_title}, {r4.tmdb_cat}-{r4.tmdb_id}')
+            return recordJson(r4)
+        else:
+            return recordNotfound()
 
     return recordNotfound()
 
