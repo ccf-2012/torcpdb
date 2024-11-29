@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 import os, sys, re
-from torinfo import TorrentParser
+from torinfo import TorrentParser, TorrentInfo
 from tmdbsearcher import TMDbSearcher
 import myconfig
 from loguru import logger
@@ -489,6 +489,41 @@ def get_records():
         'data': [record.to_dict() for record in records]
     })
 
+def clearMediaRecord(record):
+    record.overview = ''
+    record.production_countries = ''
+    record.original_title = ''
+    record.poster_path = ''
+    record.original_language = ''
+    record.genre_ids=''
+    return record
+
+def updateRecordTMDbInfo(record, tmdb_cat, tmdb_id):
+    torinfo = TorrentInfo()
+    torinfo.tmdb_cat = tmdb_cat
+    torinfo.tmdb_id = tmdb_id
+    ts = TMDbSearcher(myconfig.CONFIG.tmdb_api_key, myconfig.CONFIG.tmdb_lang)
+    if r := ts.searchTMDbByIMDbId(torinfo):    
+        record.tmdb_title = torinfo.tmdb_title,
+        record.tmdb_cat = torinfo.tmdb_cat,
+        record.tmdb_id = torinfo.tmdb_id,
+        record.imdb_id = torinfo.imdb_id,
+        record.imdb_val = torinfo.imdb_val,
+        record.year = torinfo.year,
+        record.original_language = torinfo.original_language,
+        record.popularity = torinfo.popularity,
+        record.poster_path = torinfo.poster_path,
+        record.release_air_date = torinfo.release_air_date,
+        gidstr = ','.join(str(e) for e in torinfo.genre_ids)
+        record.genre_ids = gidstr,
+        record.origin_country = torinfo.origin_country,
+        record.original_title = torinfo.original_title,
+        record.overview = torinfo.overview,
+        record.vote_average = torinfo.vote_average,
+        record.production_countries = torinfo.production_countries,
+    return
+
+
 # 修改 记录
 @app.route('/api/records/<int:id>', methods=['PUT'])
 def update_record(id):
@@ -496,12 +531,21 @@ def update_record(id):
     data = request.get_json()
     
     try:
+        tmdb_id = data.get('tmdb_id', '')
+        tmdb_cat = data.get('tmdb_cat', '')
         record.torname_regex = data.get('torname_regex', record.torname_regex)
-        record.tmdb_title = data.get('tmdb_title', record.tmdb_title)
         record.tmdb_cat = data.get('tmdb_cat', record.tmdb_cat)
         record.tmdb_id = data.get('tmdb_id', record.tmdb_id)
         record.year = data.get('year', record.year)
-        
+        if (tmdb_id != record.tmdb_id) or (tmdb_cat != record.tmdb_cat):
+            if not tmdb_id and not tmdb_cat:
+                updateRecordTMDbInfo(record, tmdb_cat, tmdb_id)
+            else:
+                clearMediaRecord(record)
+        tmdb_title = data.get('tmdb_title', record.tmdb_title)
+        if tmdb_title != record.tmdb_title:
+            logger.warning(f'自定义标题： {tmdb_title} TMDb标题: {record.tmdb_title}')
+            record.tmdb_title = tmdb_title
         db.session.commit()
         return jsonify({
             'success': True,
