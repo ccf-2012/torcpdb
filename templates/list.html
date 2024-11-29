@@ -15,7 +15,7 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">编辑记录</h5>
+                    <h5 id="formTitle" class="modal-title">编辑记录</h5>
                 </div>
                 <div class="modal-body">        
                     <form id="editForm" >
@@ -110,6 +110,7 @@
     }
 
     $("#addbtn").click(function(){
+        $("#formTitle").val('新增记录')
         $("#torname_regex").val('')
         $("#tmdb_title").val('')
         $("#tmdb_cat").val('')
@@ -240,7 +241,6 @@ $(document).ready(function () {
             data: 'tmdb_title',
             "width": "35%",
             "render": function (data, type, row, meta) {
-            if (row.tmdb_id > 0) {
               var tmdb_link = row.tmdb_cat + '/' + row.tmdb_id;
               var tmdb_title = (row.tmdb_title) ? row.tmdb_title : tmdb_link;
               var tmdb_line = row.tmdb_id ? '<a href="https://www.themoviedb.org/' + tmdb_link + '" target="_blank">' + tmdb_title + '</a>' : tmdb_title;
@@ -249,8 +249,6 @@ $(document).ready(function () {
               var overview = row.overview ? '<span class="sub-title">' + row.overview + '</span>' : '';
               return tmdb_line + genre + '<br>' + tmdbcat +  overview;
             }
-            else return ''
-          }
         },
         {
             data: 'torname',
