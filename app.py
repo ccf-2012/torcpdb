@@ -513,23 +513,23 @@ def updateRecordTMDbInfo(record, tmdb_cat, tmdb_id):
     torinfo.tmdb_id = tmdb_id
     ts = TMDbSearcher(myconfig.CONFIG.tmdb_api_key, myconfig.CONFIG.tmdb_lang)
     if r := ts.searchTMDbByTMDbId(torinfo):    
-        record.tmdb_title = torinfo.tmdb_title,
-        record.tmdb_cat = torinfo.tmdb_cat,
-        record.tmdb_id = torinfo.tmdb_id,
-        record.imdb_id = torinfo.imdb_id,
-        record.imdb_val = torinfo.imdb_val,
-        record.year = torinfo.year,
-        record.original_language = torinfo.original_language,
-        record.popularity = torinfo.popularity,
-        record.poster_path = torinfo.poster_path,
-        record.release_air_date = torinfo.release_air_date,
+        record.tmdb_title = torinfo.tmdb_title
+        record.tmdb_cat = torinfo.tmdb_cat
+        record.tmdb_id = torinfo.tmdb_id
+        record.imdb_id = torinfo.imdb_id
+        record.imdb_val = torinfo.imdb_val
+        record.year = torinfo.year
+        record.original_language = torinfo.original_language
+        record.popularity = torinfo.popularity
+        record.poster_path = torinfo.poster_path
+        record.release_air_date = torinfo.release_air_date
         gidstr = ','.join(str(e) for e in torinfo.genre_ids)
-        record.genre_ids = gidstr,
-        record.origin_country = torinfo.origin_country,
-        record.original_title = torinfo.original_title,
-        record.overview = torinfo.overview,
-        record.vote_average = torinfo.vote_average,
-        record.production_countries = torinfo.production_countries,
+        record.genre_ids = gidstr
+        record.origin_country = torinfo.origin_country
+        record.original_title = torinfo.original_title
+        record.overview = torinfo.overview
+        record.vote_average = torinfo.vote_average
+        record.production_countries = torinfo.production_countries
     return
 
 
