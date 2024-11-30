@@ -512,7 +512,7 @@ def updateRecordTMDbInfo(record, tmdb_cat, tmdb_id):
     torinfo.tmdb_cat = tmdb_cat
     torinfo.tmdb_id = tmdb_id
     ts = TMDbSearcher(myconfig.CONFIG.tmdb_api_key, myconfig.CONFIG.tmdb_lang)
-    if r := ts.searchTMDbByIMDbId(torinfo):    
+    if r := ts.searchTMDbByTMDbId(torinfo):    
         record.tmdb_title = torinfo.tmdb_title,
         record.tmdb_cat = torinfo.tmdb_cat,
         record.tmdb_id = torinfo.tmdb_id,
