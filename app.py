@@ -547,7 +547,7 @@ def update_record(id):
         record.tmdb_id = data.get('tmdb_id', record.tmdb_id)
         record.year = data.get('year', record.year)
         # if (tmdb_id != record.tmdb_id) or (tmdb_cat != record.tmdb_cat):
-        if not tmdb_id and not tmdb_cat:
+        if tmdb_id and tmdb_cat:
             updateRecordTMDbInfo(record, tmdb_cat, tmdb_id)
         else:
             clearMediaRecord(record)
