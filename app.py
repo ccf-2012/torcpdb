@@ -466,15 +466,18 @@ def record_media():
     
     try:
         t = TorrentInfo()
+        t.tmdb_cat=data['tmdb_cat']
+        t.tmdb_id=data['tmdb_id']
         t.torname = '<自定义标题解析>'
         t.infolink = '/'
         t.subtitle = '<自定义标题解析>'
         t.media_title=data['torname_regex']
         t.tmdb_title=data['tmdb_title']
-        t.tmdb_cat=data['tmdb_cat']
-        t.tmdb_id=data['tmdb_id']
         t.year=data['year']
         mrec = saveMediaRecord(t)
+        if not t.tmdb_cat and not t.tmdb_id:
+            updateRecordTMDbInfo(mrec, t.tmdb_cat, t.tmdb_id)
+        t.tmdb_title=data['tmdb_title']
 
         return jsonify({
             'success': True,
@@ -543,11 +546,11 @@ def update_record(id):
         record.tmdb_cat = data.get('tmdb_cat', record.tmdb_cat)
         record.tmdb_id = data.get('tmdb_id', record.tmdb_id)
         record.year = data.get('year', record.year)
-        if (tmdb_id != record.tmdb_id) or (tmdb_cat != record.tmdb_cat):
-            if not tmdb_id and not tmdb_cat:
-                updateRecordTMDbInfo(record, tmdb_cat, tmdb_id)
-            else:
-                clearMediaRecord(record)
+        # if (tmdb_id != record.tmdb_id) or (tmdb_cat != record.tmdb_cat):
+        if not tmdb_id and not tmdb_cat:
+            updateRecordTMDbInfo(record, tmdb_cat, tmdb_id)
+        else:
+            clearMediaRecord(record)
         tmdb_title = data.get('tmdb_title', record.tmdb_title)
         if tmdb_title != record.tmdb_title:
             logger.warning(f'自定义标题： {tmdb_title} TMDb标题: {record.tmdb_title}')
