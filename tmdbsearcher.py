@@ -25,13 +25,13 @@ class TMDbSearcher():
     def searchTMDbByTMDbId(self, torinfo):
         r = False
         if torinfo.tmdb_cat == 'tv':
-            r = self.searchTMDbByTMDbIdTv(torinfo, torinfo.tmdb_id)
+            r = self.searchTMDbByTMDbIdTv(torinfo)
         elif torinfo.tmdb_cat == 'movie':
-            r = self.searchTMDbByTMDbIdMovie(torinfo, torinfo.tmdb_id)
+            r = self.searchTMDbByTMDbIdMovie(torinfo)
         else:
-            r = self.searchTMDbByTMDbIdTv(torinfo, torinfo.tmdb_id)
+            r = self.searchTMDbByTMDbIdTv(torinfo)
             if not r:
-                r = self.searchTMDbByTMDbIdMovie(torinfo, torinfo.tmdb_id)
+                r = self.searchTMDbByTMDbIdMovie(torinfo)
         if r:
             r = self.fillTMDbDetails(torinfo)
         return r
