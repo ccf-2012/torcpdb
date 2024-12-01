@@ -478,7 +478,7 @@ def record_media():
         if not t.tmdb_cat and not t.tmdb_id:
             updateRecordTMDbInfo(mrec, t.tmdb_cat, t.tmdb_id)
         t.tmdb_title=data['tmdb_title']
-
+        db.session.commit()
         return jsonify({
             'success': True,
             'data': mrec.to_dict()
