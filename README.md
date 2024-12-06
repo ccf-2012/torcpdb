@@ -11,7 +11,7 @@
 ![框图](torcpdb.png)
 
 > 现在 torll 支持多个远程的 qbit，在他们下载完成时，远程入库。
-> 图中每个 qbit 节点，需包含一个 rcp 和一个 torcp2
+> 图中每个 qbit 节点，通过一个 rcp 和一个 torcp2 在 torll 的管理下，完成本地的刮削硬链
 
 
 ## 安装
