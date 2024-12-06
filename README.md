@@ -10,7 +10,7 @@
 ## 框图
 ![框图](torcpdb.png)
 
-> 现在 torll 支持多个远程的 qbit，在他们下载完成时，远程入库
+> 现在 torll 支持多个远程的 qbit，在他们下载完成时，远程入库。
 > 图中每个 qbit 节点，需包含一个 rcp 和一个 torcp2
 
 
@@ -34,5 +34,12 @@ user = ccf
 pass = something
 client_api_key = something
 ```
+
+## 启动
+```sh
+python app.py
+```
+* 启动后，打开浏览器访问 `http://you.ip:5009`，以前面 `config.ini` 中所设用户名密码登陆
+  
 
 
