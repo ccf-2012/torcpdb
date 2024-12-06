@@ -4,72 +4,35 @@
 * 本地缓存查询结果
 * 以 web ui 形式提供本地缓存数据库的查询、修改
 * 与 torcp2 对应，这是 server 端
+* 支持自定义条目和修改现有条目，以应对 TMDb 乱来的情况
 
-## api 接口
-1. /api/query
+
+## 框图
+![框图](torcpdb.png)
+
+> 现在 torll 支持多个远程的 qbit，在他们下载完成时，远程入库
+> 图中每个 qbit 节点，需包含一个 rcp 和一个 torcp2
+
+
+## 安装
+```sh
+git clone https://github.com/ccf-2012/torcpdb.git
+cd torcpdb
+pip install -r requirements.txt
 ```
-    查询种子名称对应的媒体信息
-    
-    Args:
-        seed_name (str): 需要查询的种子名称
-        api_url (str): API基础URL地址
-    
-    Returns:
-        dict: 查询结果
-            成功返回示例:
-            {
-                'success': True,
-                'data': {
-                    'id': 1,
-                    'seed_name': '示例种子名',
-                    'media_name': '正确的媒体名称',
-                    'category': '电影',
-                    'tmdb_id': 12345,
-                    'year': 2024,
-                    'created_at': '2024-01-01 12:00:00'
-                }
-            }
-            
-            失败返回示例:
-            {
-                'success': False,
-                'message': '未找到匹配记录'
-            }
-    
-    Raises:
-        requests.RequestException: 当API请求失败时抛出异常
+
+## 配置 config.ini
+* 手工编辑 `config.ini`, 内容形如：
+```ini
+[TMDB]
+tmdb_api_key = your_tmdb_api
+tmdb_lang = zh-CN
+
+
+[AUTH]
+user = ccf
+pass = something
+client_api_key = something
 ```
-2. /api/record
-```
-    记录媒体信息到数据库
-    
-    Args:
-        media_info (dict): 媒体信息字典，必须包含以下字段:
-            - seed_name: 种子名称
-            - media_name: 媒体名称
-            - category: 分类
-            - tmdb_id: TMDB ID
-            - year: 年份
-        api_url (str): API基础URL地址
-    
-    Returns:
-        dict: API响应结果
-            成功返回示例:
-            {
-                'success': True,
-                'data': {
-                    'id': 1,
-                    'seed_name': '示例种子名',
-                    'media_name': '正确的媒体名称',
-                    'category': '电影',
-                    'tmdb_id': 12345,
-                    'year': 2024,
-                    'created_at': '2024-01-01 12:00:00'
-                }
-            }
-    
-    Raises:
-        requests.RequestException: 当API请求失败时抛出异常
-        ValueError: 当提供的media_info缺少必要字段时抛出异常
-```
+
 
