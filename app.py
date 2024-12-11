@@ -284,17 +284,22 @@ def foundTorNameInLocal(torinfo):
     ).first()
     return record.media if record else None
 
-def foundTorNameRegexInLocal(torinfo):
-    if torinfo.media_title:
-        record = MediaRecord.query.filter(
-            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex)
-        ).first()
-        if record and not record.torname_regex:
-            logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
-            return None
 
-        return record
-    return None
+def foundTorNameRegexInLocal(torinfo):
+    if not torinfo.media_title:
+        return None
+
+    record = MediaRecord.query.filter(db.and_(
+        literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+        MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+        # MediaRecord.year == torinfo.year,
+    )).first()
+
+    if record and not record.torname_regex:
+        logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
+        return None
+
+    return record
 
 def foundIMDbIdInLocal(imdb_id):
     record = MediaRecord.query.filter(db.and_(
@@ -337,6 +342,16 @@ def saveTorrentRecord(mediarecord, torinfo):
     db.session.commit()
     return trec
 
+def normalizeRegex(regexstr):
+    if not isinstance(regexstr, str):
+        raise ValueError("Input must be a string")
+
+    if not regexstr.startswith('^'):
+        regexstr = '^' + regexstr
+    if not regexstr.endswith(r'\b'):
+        regexstr = regexstr + r'\b'
+    
+    return regexstr
 
 def saveMediaRecord(torinfo):
     if not torinfo.media_title:
@@ -351,7 +366,7 @@ def saveMediaRecord(torinfo):
     )
     mrec = MediaRecord(
             # 默认以 media_title 作为匹配
-            torname_regex=torinfo.media_title,
+            torname_regex=normalizeRegex(torinfo.media_title),
             tmdb_title=torinfo.tmdb_title,
             tmdb_cat=torinfo.tmdb_cat,
             tmdb_id=torinfo.tmdb_id,
@@ -440,7 +455,7 @@ def query():
     # TMDb 和 IMDb 都没给，先查本地 TorName Regex
     if mrec := foundTorNameRegexInLocal(torinfo):
         trec = saveTorrentRecord(mrec, torinfo)
-        logger.info(f'LOCAL: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+        logger.info(f'LOCAL REGEX: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
         return recordJson(mrec)
     # TMDb 和 IMDb 都没给，本地 TorName Regex 没找到，去 Blind 搜
     if s := ts.searchTMDb(torinfo):
