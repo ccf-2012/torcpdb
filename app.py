@@ -348,8 +348,8 @@ def normalizeRegex(regexstr):
 
     if not regexstr.startswith('^'):
         regexstr = '^' + regexstr
-    if not regexstr.endswith(r'\b'):
-        regexstr = regexstr + r'\b'
+    if not regexstr.endswith(r'$'):
+        regexstr = regexstr + r'$'
     
     return regexstr
 
