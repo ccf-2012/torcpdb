@@ -622,7 +622,7 @@ def main():
     configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
     myconfig.readConfig(configfile)
 
-    app.run(host='0.0.0.0', port=5009, debug=True)
+    app.run(host='::', port=5009, debug=True)
 
 
 if __name__ == '__main__':
