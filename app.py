@@ -288,13 +288,18 @@ def foundTorNameInLocal(torinfo):
 def foundTorNameRegexInLocal(torinfo):
     if not torinfo.media_title:
         return None
-
-    record = MediaRecord.query.filter(db.and_(
-        literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
-        MediaRecord.tmdb_cat == torinfo.tmdb_cat,
-        # MediaRecord.year == torinfo.year,
-    )).first()
-
+    if torinfo.tmdb_cat == 'movie':
+        record = MediaRecord.query.filter(db.and_(
+            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+            MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+            MediaRecord.year == torinfo.year,
+        )).first()
+    else:
+        record = MediaRecord.query.filter(db.and_(
+            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+            MediaRecord.tmdb_cat == torinfo.tmdb_cat
+        )).first()
+        
     if record and not record.torname_regex:
         logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
         return None
