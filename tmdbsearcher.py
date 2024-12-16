@@ -163,11 +163,15 @@ class TMDbSearcher():
 
     def searchTMDbByIMDbId(self, torinfo):
         torinfo.imdb_id = self.getIMDbInfo(torinfo)
-        r = self._searchTMDbByIMDbId(torinfo)
-        if r:
-            self.fillTMDbDetails(torinfo)
-        return r
-    
+        try:
+            r = self._searchTMDbByIMDbId(torinfo)
+            if r:
+                self.fillTMDbDetails(torinfo)
+            return r
+        except Exception as e:
+            logger.error(f"获取 IMDb 信息时发生错误: {e}")
+            return False
+
     def _searchTMDbByIMDbId(self, torinfo):
         f = Find(torinfo.imdb_id)
         logger.info("Search : " + torinfo.imdb_id)
@@ -276,11 +280,15 @@ class TMDbSearcher():
         return
     
     def searchTMDb(self, torinfo):
-        r = self._searchTMDb(torinfo)
-        if r:
-            self.fillTMDbDetails(torinfo)
-        return r
-
+        try:
+            r = self._searchTMDb(torinfo)
+            if r:
+                self.fillTMDbDetails(torinfo)
+            return r
+        except Exception as e:
+            logger.error(f"获取 TMDb 信息时发生错误: {e}")
+            return False
+        
     def _searchTMDb(self, torinfo):
         searchList = []
         title = torinfo.media_title
