@@ -14,8 +14,22 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
+app.config['MYSQL_HOST'] = '127.0.0.1'
+app.config['MYSQL_USER'] = 'torll'
+app.config['MYSQL_PASSWORD'] = 'Cr#91237'
+app.config['MYSQL_DB'] = 'torcpdb'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://{}:{}@{}/{}'.format(
+    app.config['MYSQL_USER'],
+    app.config['MYSQL_PASSWORD'],
+    app.config['MYSQL_HOST'],
+    app.config['MYSQL_DB']
+)
+
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 app.secret_key = 'torcp_db_key'  # 用于签名 session
@@ -201,9 +215,13 @@ class MediaRecord(db.Model):
             'created_at': self.created_at
         }
 
-# 创建数据库表
-with app.app_context():
-    db.create_all()
+def initDatabase():
+    # 创建数据库表
+    with app.app_context():
+        try:
+            db.create_all()
+        except Exception as e:
+            logger.error(f'数据库初始化失败: str({e})')
 
 
 @app.route('/api/mediadata')
@@ -626,6 +644,7 @@ def setupLogger():
 def main():
     configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
     myconfig.readConfig(configfile)
+    initDatabase()
 
     app.run(host='::', port=5009, debug=True)
 
