@@ -220,6 +220,8 @@ class TorCategory:
                 # else:
                 #     self.setCategory('MovieEncode')
                 self.setCategory('MovieEncode')
+            elif re.search(r'\bMiniSD|MiniFHD\b', torName, re.I):
+                self.setCategory('MovieEncode')
             else:
                 if self.resolution == '2160p':
                     self.setCategory('MovieBDMV4K')
