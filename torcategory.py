@@ -194,7 +194,7 @@ class TorCategory:
             return ''
 
     def getSource(self, torName):
-        match = re.search(r'\b(Blu[\-\. ]?Ray|WEB[\-\. ]?DL|WEB|WEBRip|^BD([-. ]\d)*|\d+[. ]BD)\b', torName, re.A | re.I)
+        match = re.search(r'\b(Blu[\-\. ]?Ray|WEB[\-\. ]?DL|WEB|WEBRip|^BD([-. ]\d)*|\d+[. ](BD|BDRip))\b', torName, re.A | re.I)
         if match:
             # mediaSource = match.group(0).strip().lower()
             if re.search(r'(\bBlu|\bBD)', match.group(0), flags=re.A | re.I):
