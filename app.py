@@ -187,7 +187,7 @@ class MediaRecord(db.Model):
     genre_ids = db.Column(db.String(200))
     origin_country = db.Column(db.String(10)) 
     original_title = db.Column(db.String(100)) 
-    overview = db.Column(db.String(200)) 
+    overview = db.Column(db.Text1) 
     vote_average = db.Column(db.Float, default=0.0) 
     production_countries = db.Column(db.String(10)) 
 
