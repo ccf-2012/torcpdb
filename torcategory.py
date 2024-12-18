@@ -76,7 +76,7 @@ class TorCategory:
 
     def categoryByExt(self, torName):
         if re.search(
-                r'(pdf|epub|mobi|txt|chm|azw3|CatEDU|eBook-\w{4,8}|mobi|doc|docx).?$',
+                r'(pdf|epub|mobi|txt|chm|azw3|eBook-\w{4,8}|mobi|doc|docx).?$',
                 torName, re.I):
             self.setCategory('eBook')
         elif re.search(
