@@ -162,7 +162,8 @@ class TMDbSearcher():
         return re.search(r'[\u4e00-\u9fa5]', str)
 
     def searchTMDbByIMDbId(self, torinfo):
-        torinfo.imdb_id = self.getIMDbInfo(torinfo)
+        if torinfo.tmdb_cat == 'tv':
+            torinfo.imdb_id = self.getIMDbInfo(torinfo)
         try:
             r = self._searchTMDbByIMDbId(torinfo)
             if r:
@@ -415,7 +416,6 @@ class TMDbSearcher():
 
         logger.info('TMDb Not found: [%s] [%s] ' % (title, cntitle))
         return False
-
 
 
     def getIMDbInfo(self, torinfo):
