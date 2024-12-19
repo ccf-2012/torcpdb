@@ -162,7 +162,11 @@ class TMDbSearcher():
         return re.search(r'[\u4e00-\u9fa5]', str)
 
     def searchTMDbByIMDbId(self, torinfo):
+        if not torinfo.imdb_id.startswith('tt'):
+            logger.error(f"所给 IMDb 不对：{torinfo.imdb_id}")
+            return False
         if torinfo.tmdb_cat == 'tv':
+            logger.info(f"查询 tv 的 IMDb")
             torinfo.imdb_id = self.getIMDbInfo(torinfo)
         try:
             r = self._searchTMDbByIMDbId(torinfo)
@@ -417,9 +421,11 @@ class TMDbSearcher():
         logger.info('TMDb Not found: [%s] [%s] ' % (title, cntitle))
         return False
 
-
     def getIMDbInfo(self, torinfo):
         if len(torinfo.imdb_id) < 2:
+            return ''
+        if not torinfo.imdb_id.startswith('tt'):
+            logger.error(f"所给 IMDb 不对：{torinfo.imdb_id}")
             return ''
         in_imdbid = torinfo.imdb_id
         ia = Cinemagoer()
