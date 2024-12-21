@@ -16,20 +16,20 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 app = Flask(__name__)
 
 
-app.config['MYSQL_HOST'] = '127.0.0.1'
-app.config['MYSQL_USER'] = 'torll'
-app.config['MYSQL_PASSWORD'] = 'Cr#91237'
-app.config['MYSQL_DB'] = 'torcpdb'
+# app.config['MYSQL_HOST'] = '127.0.0.1'
+# app.config['MYSQL_USER'] = 'torll'
+# app.config['MYSQL_PASSWORD'] = 'Cr#91237'
+# app.config['MYSQL_DB'] = 'torcpdb'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://{}:{}@{}/{}'.format(
-    app.config['MYSQL_USER'],
-    app.config['MYSQL_PASSWORD'],
-    app.config['MYSQL_HOST'],
-    app.config['MYSQL_DB']
-)
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://{}:{}@{}/{}'.format(
+#     app.config['MYSQL_USER'],
+#     app.config['MYSQL_PASSWORD'],
+#     app.config['MYSQL_HOST'],
+#     app.config['MYSQL_DB']
+# )
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
-# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 app.secret_key = 'torcp_db_key'  # 用于签名 session
