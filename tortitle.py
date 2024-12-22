@@ -258,6 +258,7 @@ class TorTitle:
         sstr = re.sub(r'([\s\.-](\d+)?CD[\.-]WEB|[\s\.-](\d+)?CD[\.-]FLAC|[\s\.-][\[\(\{]FLAC[\]\)\}]).*$', '', sstr, flags=re.I)
         sstr = re.sub(r'\bFLAC\b.*$', '', sstr, flags=re.I)
         sstr = re.sub(r'^[\[\(]\d+[^\)\]]*[\)\]]', '', sstr, flags=re.I)
+        sstr = re.sub(r'^Jade\b', '', sstr, flags=re.I)
         sstr = re.sub(r'^\(\w+\)', '', sstr, flags=re.I)
 
         sstr = re.sub(r'^\W?CC_?\b', '', sstr, flags=re.I)
