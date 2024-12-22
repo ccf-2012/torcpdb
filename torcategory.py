@@ -102,7 +102,7 @@ class TorCategory:
         elif re.search(r'(\d+册|\d+期|\d+版|\d+本|\d+年|\d+月|系列|全集|作品集).?$',
                        torName):
             self.setCategory('eBook')
-        elif re.search(r'(\bConcert|演唱会|音乐会|\bLive[. ](At|in))\b', torName, re.A | re.I):
+        elif re.search(r'(\bConcert|演唱会|音乐会)\b', torName, re.A | re.I):
             self.setCategory('MV')
         elif re.search(r'\bBugs!.?\.mp4', torName, re.I):
             self.setCategory('MV')
