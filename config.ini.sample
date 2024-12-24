@@ -1,0 +1,11 @@
+
+
+[TMDB]
+tmdb_api_key = __your_tmdb_api_key__
+tmdb_lang = zh-CN
+
+
+[AUTH]
+user = admin
+pass = something
+client_api_key = something
