@@ -237,7 +237,7 @@ class TMDbSearcher():
 
     def findYearMatch(self, results, year, strict=True):
         matchList = []
-        for result in results:
+        for result in results['results']:
             if year == 0:
                 matchList.append(result)
                 continue
@@ -340,12 +340,13 @@ class TMDbSearcher():
         else:
             searchList = [('multi', cntitle), ('multi', cuttitle)]
 
+        search = Search()
+
         for s in searchList:
             if s[0] == 'tv' and s[1]:
                 logger.info('Search TV: ' + s[1])
                 # tv = TV()
                 # results = tv.search(s[1])
-                search = Search()
 
                 # results = search.tv_shows(self.fixTmdbParam({"query": s[1], "year": str(intyear), "page": 1}))
                 results = search.tv_shows(term=s[1], release_year=str(intyear), page=1)
@@ -358,6 +359,7 @@ class TMDbSearcher():
                         self.saveTmdbTVResultMatch(torinfo, result)
                         return True
                     else:
+                        results = search.tv_shows(term=s[1], release_year=None, page=1)
                         result = self.findYearMatch(results, intyear, strict=False)
                         if result:
                             self.saveTmdbTVResultMatch(torinfo, result)
@@ -365,7 +367,6 @@ class TMDbSearcher():
 
             elif s[0] == 'movie' and s[1]:
                 logger.info('Search Movie:  %s (%d)' % (s[1], intyear))
-                search = Search()
                 if intyear == 0:
                     # results = search.movies({"query": s[1], "page": 1})
                     results = search.movies(term=s[1])
@@ -393,7 +394,6 @@ class TMDbSearcher():
                             return True
             elif s[0] == 'multi' and s[1]:
                 logger.info('Search Multi:  %s (%d)' % (s[1], intyear))
-                search = Search()
                 if intyear == 0:
                     # results = search.multi({"query": s[1], "page": 1})
                     results = search.multi(term=s[1], page=1)
