@@ -237,7 +237,13 @@ class TMDbSearcher():
 
     def findYearMatch(self, results, year, strict=True):
         matchList = []
-        for result in results['results']:
+        if hasattr(results, 'results'):
+            resultlist = results['results']
+        else:
+            # 旧版 tmdbv3api
+            resultlist = results
+            
+        for result in resultlist:
             if year == 0:
                 matchList.append(result)
                 continue
@@ -293,12 +299,26 @@ class TMDbSearcher():
         except Exception as e:
             logger.error(f"获取 TMDb 信息时发生错误: {e}")
             return False
-        
+    
+    def fixYear(self, torinfo):
+        intyear = torinfo.year
+        stryear = None
+        if intyear < 1900 and intyear > 2100:
+            intyear = 0
+        if intyear > 0:
+            # 剧集 S01 之外的年份不可用
+            if torinfo.season and 'S01' not in torinfo.season:
+                intyear = 0
+            else:
+                stryear = str(intyear)
+        return stryear, intyear
+
+
     def _searchTMDb(self, torinfo):
         searchList = []
         title = torinfo.media_title
         cntitle = torinfo.subtitle
-        intyear = torinfo.year
+        stryear, intyear = self.fixYear(torinfo)
 
         if title == cntitle:
             cntitle = ''
@@ -346,16 +366,8 @@ class TMDbSearcher():
             if s[0] == 'tv' and s[1]:
                 logger.info('Search TV: ' + s[1])
 
-                stryear = None
-                if intyear > 0:
-                    if torinfo.season and 'S01' not in torinfo.season:
-                        stryear = None
-                        intyear = 0
-                    else:
-                        stryear = str(intyear)
-
                 # results = search.tv_shows(self.fixTmdbParam({"query": s[1], "year": str(intyear), "page": 1}))
-                results = search.tv_shows(term=s[1], release_year=stryear, page=1)
+                results = search.tv_shows(term=s[1], adult=True, release_year=stryear, page=1)
                 if len(results) > 0:
                     result = self.findYearMatch(results, intyear, strict=True)
                     if result:
@@ -371,10 +383,10 @@ class TMDbSearcher():
                 logger.info('Search Movie:  %s (%d)' % (s[1], intyear))
                 if intyear == 0:
                     # results = search.movies({"query": s[1], "page": 1})
-                    results = search.movies(term=s[1])
+                    results = search.movies(term=s[1], adult=True)
                 else:
                     # results = search.movies(self.fixTmdbParam({"query": s[1], "year": str(intyear), "page": 1}))
-                    results = search.movies(term=s[1], year=str(intyear), page=1)
+                    results = search.movies(term=s[1], adult=True, year=str(intyear), page=1)
 
                 if len(results) > 0:
                     result = self.findYearMatch(results, intyear, strict=True)
@@ -398,10 +410,10 @@ class TMDbSearcher():
                 logger.info('Search Multi:  %s (%d)' % (s[1], intyear))
                 if intyear == 0:
                     # results = search.multi({"query": s[1], "page": 1})
-                    results = search.multi(term=s[1], page=1)
+                    results = search.multi(term=s[1], adult=True, page=1)
                 else:
                     # results = search.multi(self.fixTmdbParam({"query": s[1], "year": str(intyear), "page": 1}))
-                    results = search.multi(term=s[1], page=1)
+                    results = search.multi(term=s[1], adult=True, page=1)
 
                 if len(results) > 0:
                     result = self.findYearMatch(results, intyear, strict=True)
@@ -414,7 +426,8 @@ class TMDbSearcher():
                             self.saveTmdbMultiResult(torinfo, result)
                             return True
                 elif intyear > 0:
-                    results = search.multi({"query": s[1], "page": 1})
+                    # results = search.multi({"query": s[1], "page": 1})
+                    results = search.multi(term=s[1], adult=True)
                     if len(results) > 0:
                         result = self.findYearMatch(results, intyear, strict=True)
                         if result:
