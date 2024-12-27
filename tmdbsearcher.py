@@ -223,10 +223,10 @@ class TMDbSearcher():
             titlestr = re.sub(s[0], s[1], titlestr, flags=re.A)
         return titlestr
 
-    def fixTmdbParam(self, tparam):
-        if "year" in tparam and len(tparam["year"]) != 4:
-            del tparam["year"]
-        return tparam
+    # def fixTmdbParam(self, tparam):
+    #     if "year" in tparam and len(tparam["year"]) != 4:
+    #         del tparam["year"]
+    #     return tparam
 
     def selectOrder(self, cntitle, cuttitle, list):
         if len(cntitle) < 3 and len(cuttitle)> 5:
@@ -345,21 +345,23 @@ class TMDbSearcher():
         for s in searchList:
             if s[0] == 'tv' and s[1]:
                 logger.info('Search TV: ' + s[1])
-                # tv = TV()
-                # results = tv.search(s[1])
+
+                stryear = None
+                if intyear > 0:
+                    if torinfo.season and 'S01' not in torinfo.season:
+                        stryear = None
+                        intyear = 0
+                    else:
+                        stryear = str(intyear)
 
                 # results = search.tv_shows(self.fixTmdbParam({"query": s[1], "year": str(intyear), "page": 1}))
-                results = search.tv_shows(term=s[1], release_year=str(intyear), page=1)
+                results = search.tv_shows(term=s[1], release_year=stryear, page=1)
                 if len(results) > 0:
-                    if intyear > 0:
-                        if torinfo.season and 'S01' not in torinfo.season:
-                            intyear = 0
                     result = self.findYearMatch(results, intyear, strict=True)
                     if result:
                         self.saveTmdbTVResultMatch(torinfo, result)
                         return True
                     else:
-                        results = search.tv_shows(term=s[1], release_year=None, page=1)
                         result = self.findYearMatch(results, intyear, strict=False)
                         if result:
                             self.saveTmdbTVResultMatch(torinfo, result)
