@@ -64,6 +64,7 @@
             <tr>
               <th></th>
               <th>媒体名称</th>
+              <th>正则规则</th>
               <th>种子名称</th>
               <th>加入时间</th>
               <th>操作</th>
@@ -259,6 +260,10 @@ $(document).ready(function () {
                     return r
                 }
             }
+        },
+        {
+            data: 'torname_regex',
+            "width": "10%",
         },
         {
           data: 'created_at',
