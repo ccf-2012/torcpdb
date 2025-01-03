@@ -1,0 +1,15 @@
+[TMDB]
+tmdb_api_key = your_tmdb_api_key
+tmdb_lang = zh-CN
+
+[AUTH]
+user = admin
+pass = some_password
+client_api_key = some_apikey_for_client
+
+[MYSQL]
+host = localhost
+port = 3306
+user = torll
+pass = Cr#91237
+db = torll

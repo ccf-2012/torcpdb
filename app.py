@@ -11,26 +11,33 @@ from tmdbsearcher import TMDbSearcher
 import myconfig
 from loguru import logger
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-
+# 导入 models.py 中的定义
+from models import (
+    db,
+    TorrentRecord,
+    MediaRecord
+)
 
 app = Flask(__name__)
 
+def loadMysqlConfig():
+    app.config["MYSQL_HOST"] = myconfig.CONFIG.mysql_host
+    app.config["MYSQL_PORT"] = myconfig.CONFIG.mysql_port
+    app.config["MYSQL_USER"] = myconfig.CONFIG.mysql_user
+    app.config["MYSQL_PASSWORD"] = myconfig.CONFIG.mysql_pass
+    app.config["MYSQL_DB"] = myconfig.CONFIG.mysql_db
+    app.config["SQLALCHEMY_DATABASE_URI"] = "mysql://{}:{}@{}:{}/{}".format(
+        app.config["MYSQL_USER"],
+        app.config["MYSQL_PASSWORD"],
+        app.config["MYSQL_HOST"],
+        app.config["MYSQL_PORT"],
+        app.config["MYSQL_DB"],
+    )
+    db.init_app(app)
 
-app.config['MYSQL_HOST'] = '127.0.0.1'
-app.config['MYSQL_USER'] = 'torll'
-app.config['MYSQL_PASSWORD'] = 'Cr#91237'
-app.config['MYSQL_DB'] = 'torcpdb'
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://{}:{}@{}/{}'.format(
-    app.config['MYSQL_USER'],
-    app.config['MYSQL_PASSWORD'],
-    app.config['MYSQL_HOST'],
-    app.config['MYSQL_DB']
-)
 
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
 # app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
 app.secret_key = 'torcp_db_key'  # 用于签名 session
 
@@ -118,102 +125,6 @@ def require_api_key(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-GENRE_IDS = {28: '动作', 12: '冒险', 16: '动画', 35: '喜剧', 80: '犯罪', 99: '纪录', 18: '剧情', 10751: '家庭',
-             14: '奇幻', 36: '历史', 27: '恐怖', 10402: '音乐', 9648: '悬疑', 10749: '爱情', 878: '科幻', 10770: '电视电影',
-             53: '惊悚', 10752: '战争', 37: '西部', 10759: '动作冒险', 10762: '儿童', 10763: '新闻', 10764: '真人秀', 
-             10765: '科幻奇幻', 10766: '肥皂剧', 10767: '脱口秀', 10768: '战争政治'}
-
-
-def tryint(instr):
-    try:
-        string_int = int(instr)
-    except ValueError:    
-        string_int = 0
-    return string_int
-
-
-def genreid2str(idstr):
-    if not idstr:
-        return ''
-    idlist = [tryint(z) for z in idstr.split(',')]
-    genre_names = ''
-    if idlist:
-        genre_names = [GENRE_IDS.get(id, '') for id in idlist if id in GENRE_IDS]
-    
-    # 返回结果，空格分隔
-    return ' '.join(genre_names)
-
-
-def truncate_string(input_string, max_length=128):
-    if not input_string:
-        return ''
-    input_string = input_string.strip()
-    # 如果字符串的长度大于最大长度，则截取并加上 '...'
-    if len(input_string) > max_length:
-        return input_string[:max_length] + '...'
-    else:
-        return input_string
-
-
-# 数据模型
-class TorrentRecord(db.Model):
-    __tablename__ = "torrent_table"
-    id = db.Column(db.Integer, primary_key=True)
-    media_id = db.Column(db.Integer, db.ForeignKey('media_table.id'))
-    media = db.relationship("MediaRecord", back_populates="torrents")
-
-    torname = db.Column(db.String(200), nullable=False)
-    infolink = db.Column(db.String(200), nullable=True)
-    subtitle = db.Column(db.String(200), nullable=True)
-
-class MediaRecord(db.Model):
-    __tablename__ = "media_table"
-    id = db.Column(db.Integer, primary_key=True)
-    torrents = db.relationship('TorrentRecord', back_populates='media', cascade="all,delete")
-
-    created_at = db.Column(db.DateTime, default=datetime.now)
-    torname_regex = db.Column(db.String(200), nullable=False)
-    tmdb_title = db.Column(db.String(200), nullable=False)
-    tmdb_cat = db.Column(db.String(16))
-    tmdb_id = db.Column(db.Integer)
-    imdb_id = db.Column(db.String(16))
-    imdb_val = db.Column(db.Float, default=0.0)
-    year = db.Column(db.Integer)
-    original_language = db.Column(db.String(16))
-    popularity = db.Column(db.Float, default=0.0)
-    poster_path = db.Column(db.String(128))
-    release_air_date = db.Column(db.String(16))
-    genre_ids = db.Column(db.String(200))
-    origin_country = db.Column(db.String(10)) 
-    original_title = db.Column(db.String(100)) 
-    overview = db.Column(db.Text) 
-    vote_average = db.Column(db.Float, default=0.0) 
-    production_countries = db.Column(db.String(10)) 
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'torname_regex': self.torname_regex,
-            'tmdb_title': self.tmdb_title,
-            'tmdb_cat': self.tmdb_cat,
-            'tmdb_id': self.tmdb_id,
-            'imdb_id': self.imdb_id,
-            'imdb_val': self.imdb_val,
-            'year': self.year,
-            'original_language': self.original_language,
-            'popularity': self.popularity,
-            'poster_path': self.poster_path,
-            'release_air_date': self.release_air_date,
-            'genre_ids': self.genre_ids,
-            'genre_str': genreid2str(self.genre_ids),
-            'origin_country': self.origin_country,
-            'original_title': self.original_title,
-            'overview': truncate_string(self.overview),
-            'vote_average': self.vote_average,
-            'production_countries': self.production_countries,
-            'created_at': self.created_at
-        }
 
 def initDatabase():
     # 创建数据库表
@@ -644,11 +555,12 @@ def setupLogger():
 def main():
     configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
     myconfig.readConfig(configfile)
+    loadMysqlConfig()
+    setupLogger()
     initDatabase()
 
     app.run(host='::', port=5009, debug=True)
 
 
 if __name__ == '__main__':
-    setupLogger()
     main()      
