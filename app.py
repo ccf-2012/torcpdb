@@ -35,7 +35,8 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///media.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+db.init_app(app)
+
 
 app.secret_key = 'torcp_db_key'  # 用于签名 session
 
@@ -553,7 +554,7 @@ def setupLogger():
 def main():
     configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
     myconfig.readConfig(configfile)
-    loadMysqlConfig()
+    # loadMysqlConfig()
     setupLogger()
     initDatabase()
 
