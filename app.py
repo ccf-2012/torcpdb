@@ -386,7 +386,8 @@ def query():
                 return recordJson(r2)
             else:
                 return recordNotfound()
-    if 'imdbid' in data:
+    # 有 IMDbId 且是电影
+    if 'imdbid' in data and torinfo.tmdb_cat == 'movie':
         # 有IMDb 先查本地
         if mrec := foundIMDbIdInLocal(data.get('imdbid')):
             trec = saveTorrentRecord(mrec, torinfo)

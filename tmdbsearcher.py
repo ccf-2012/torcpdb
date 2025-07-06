@@ -165,9 +165,9 @@ class TMDbSearcher():
         if not torinfo.imdb_id.startswith('tt'):
             logger.error(f"所给 IMDb 不对：{torinfo.imdb_id}")
             return False
-        if torinfo.tmdb_cat == 'tv':
-            logger.info(f"查询 tv 的 IMDb")
-            torinfo.imdb_id = self.getIMDbInfo(torinfo)
+        # if torinfo.tmdb_cat == 'tv':
+        #     logger.info(f"查询 tv 的 IMDb")
+        #     torinfo.imdb_id = self.getIMDbInfo(torinfo)
         try:
             r = self._searchTMDbByIMDbId(torinfo)
             if r:
