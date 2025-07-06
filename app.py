@@ -148,6 +148,7 @@ def apiMediaDbList():
             MediaRecord.tmdb_title.like(f'%{search}%'),
             MediaRecord.tmdb_id.like(f'%{search}%'),
             MediaRecord.imdb_id.like(f'%{search}%'),
+            MediaRecord.torname_regex.like(f'%{search}%'),
         ))
     total_filtered = query.count()
 
@@ -287,11 +288,25 @@ def normalizeRegex(regexstr):
     
     return regexstr
 
+def dupeTorNameRegex(torinfo):
+    if not torinfo.media_title:
+        return False
+    record = MediaRecord.query.filter(db.and_(
+        literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+        MediaRecord.tmdb_cat == torinfo.tmdb_cat
+    )).first()
+    return record is not None
+
+
 def saveMediaRecord(torinfo):
     if not torinfo.media_title:
         logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
         return None
 
+    if dupeTorNameRegex(torinfo):
+        logger.error(f'regex dupe: {torinfo.media_title} - {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+        return None
+    
     gidstr = ','.join(str(e) for e in torinfo.genre_ids)
     trec = TorrentRecord(
         torname=torinfo.torname,
