@@ -267,6 +267,13 @@ def recordNotfound():
 def saveTorrentRecord(mediarecord, torinfo):
     if not torinfo.infolink:
         return None
+
+    # 检查是否已存在相同的 torname
+    existing_torrent = TorrentRecord.query.filter_by(torname=torinfo.torname).first()
+    if existing_torrent:
+        logger.warning(f"TorrentRecord with torname '{torinfo.torname}' already exists. Skipping.")
+        return existing_torrent  # 或者返回 None，取决于你希望如何处理重复记录
+
     trec = TorrentRecord(
         torname=torinfo.torname,
         infolink=torinfo.infolink,
@@ -579,4 +586,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()      
+    main()
