@@ -319,15 +319,17 @@ def dupeTorNameRegex(torinfo):
             logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {torinfo.torname}')
             return False
 
-        # Escape special regex characters in media_title
-        escaped_title = escape_regex_str(torinfo.media_title)
+        # Use simple LIKE pattern instead of regexp
+        like_pattern = f"%{torinfo.media_title}%"
         
         record = MediaRecord.query.filter(db.and_(
-            literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
+            MediaRecord.tmdb_title.like(like_pattern),
             MediaRecord.tmdb_cat == torinfo.tmdb_cat,
             MediaRecord.torname_regex.isnot(None)
         )).first()
         
+        if record:
+            logger.info(f"Found duplicate title pattern: {torinfo.media_title} matches {record.tmdb_title}")
         return record is not None
         
     except Exception as e:
@@ -340,9 +342,9 @@ def saveMediaRecord(torinfo):
         logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
         return None
 
-    # if dupeTorNameRegex(torinfo):
-    #     logger.error(f'regex dupe: {torinfo.media_title} - {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
-    #     return None
+    if dupeTorNameRegex(torinfo):
+        logger.error(f'regex dupe: {torinfo.media_title} - {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+        return None
     
     gidstr = ','.join(str(e) for e in torinfo.genre_ids)
     trec = TorrentRecord(
