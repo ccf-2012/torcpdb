@@ -295,6 +295,11 @@ def normalizeRegex(regexstr):
     
     return regexstr
 
+def escape_regex_str(s):
+    """Escape special regex characters in string for MySQL regexp comparison"""
+    special_chars = '[\\^$.|?*+(){}'
+    return ''.join('\\' + c if c in special_chars else c for c in s)
+
 def dupeTorNameRegex(torinfo):
     try:
         if not torinfo.media_title or not isinstance(torinfo.media_title, str):
@@ -305,10 +310,13 @@ def dupeTorNameRegex(torinfo):
             logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {torinfo.torname}')
             return False
 
+        # Escape special regex characters in media_title
+        escaped_title = escape_regex_str(torinfo.media_title)
+        
         record = MediaRecord.query.filter(db.and_(
-            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+            literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
             MediaRecord.tmdb_cat == torinfo.tmdb_cat,
-            MediaRecord.torname_regex.isnot(None)  # 确保 regex 字段不为空
+            MediaRecord.torname_regex.isnot(None)
         )).first()
         
         return record is not None
