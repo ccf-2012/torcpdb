@@ -218,15 +218,19 @@ def foundTorNameInLocal(torinfo):
 def foundTorNameRegexInLocal(torinfo):
     if not torinfo.media_title:
         return None
+        
+    # Escape special regex characters in media_title
+    escaped_title = escape_regex_str(torinfo.media_title)
+    
     if torinfo.tmdb_cat == 'movie':
         record = MediaRecord.query.filter(db.and_(
-            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+            literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
             MediaRecord.tmdb_cat == torinfo.tmdb_cat,
             MediaRecord.year == torinfo.year,
         )).first()
     else:
         record = MediaRecord.query.filter(db.and_(
-            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+            literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
             MediaRecord.tmdb_cat == torinfo.tmdb_cat
         )).first()
         
