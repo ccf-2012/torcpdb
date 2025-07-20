@@ -331,9 +331,9 @@ def saveMediaRecord(torinfo):
         logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
         return None
 
-    if dupeTorNameRegex(torinfo):
-        logger.error(f'regex dupe: {torinfo.media_title} - {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
-        return None
+    # if dupeTorNameRegex(torinfo):
+    #     logger.error(f'regex dupe: {torinfo.media_title} - {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+    #     return None
     
     gidstr = ','.join(str(e) for e in torinfo.genre_ids)
     trec = TorrentRecord(
