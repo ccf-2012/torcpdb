@@ -296,13 +296,26 @@ def normalizeRegex(regexstr):
     return regexstr
 
 def dupeTorNameRegex(torinfo):
-    if not torinfo.media_title:
+    try:
+        if not torinfo.media_title or not isinstance(torinfo.media_title, str):
+            logger.warning(f'Invalid media_title: {torinfo.torname}')
+            return False
+        
+        if not torinfo.tmdb_cat or torinfo.tmdb_cat not in ['movie', 'tv']:
+            logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {torinfo.torname}')
+            return False
+
+        record = MediaRecord.query.filter(db.and_(
+            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
+            MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+            MediaRecord.torname_regex.isnot(None)  # 确保 regex 字段不为空
+        )).first()
+        
+        return record is not None
+        
+    except Exception as e:
+        logger.error(f'Error in dupeTorNameRegex: {str(e)} for {torinfo.torname}')
         return False
-    record = MediaRecord.query.filter(db.and_(
-        literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
-        MediaRecord.tmdb_cat == torinfo.tmdb_cat
-    )).first()
-    return record is not None
 
 
 def saveMediaRecord(torinfo):
