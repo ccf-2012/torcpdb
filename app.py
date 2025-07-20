@@ -216,29 +216,34 @@ def foundTorNameInLocal(torinfo):
 
 
 def foundTorNameRegexInLocal(torinfo):
-    if not torinfo.media_title:
-        return None
-        
-    # Escape special regex characters in media_title
-    escaped_title = escape_regex_str(torinfo.media_title)
-    
-    if torinfo.tmdb_cat == 'movie':
-        record = MediaRecord.query.filter(db.and_(
-            literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
-            MediaRecord.tmdb_cat == torinfo.tmdb_cat,
-            MediaRecord.year == torinfo.year,
-        )).first()
-    else:
-        record = MediaRecord.query.filter(db.and_(
-            literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
-            MediaRecord.tmdb_cat == torinfo.tmdb_cat
-        )).first()
-        
-    if record and not record.torname_regex:
-        logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
-        return None
+    try:
+        if not torinfo.media_title:
+            return None
 
-    return record
+        # Convert media_title to SQL LIKE pattern
+        like_pattern = f"%{torinfo.media_title}%"
+        
+        if torinfo.tmdb_cat == 'movie':
+            record = MediaRecord.query.filter(db.and_(
+                MediaRecord.tmdb_title.like(like_pattern),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                MediaRecord.year == torinfo.year,
+            )).first()
+        else:
+            record = MediaRecord.query.filter(db.and_(
+                MediaRecord.tmdb_title.like(like_pattern),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat
+            )).first()
+            
+        if record and not record.torname_regex:
+            logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
+            return None
+
+        return record
+        
+    except Exception as e:
+        logger.error(f'Error in foundTorNameRegexInLocal: {str(e)} for title "{torinfo.media_title}"')
+        return None
 
 def foundIMDbIdInLocal(imdb_id):
     record = MediaRecord.query.filter(db.and_(
