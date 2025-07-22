@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import literal
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import resource  # 添加 resource 模块导入
 
 import os, sys, re
 from torinfo import TorrentParser, TorrentInfo
