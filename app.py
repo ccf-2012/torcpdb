@@ -382,6 +382,7 @@ def saveMediaRecord(torinfo):
 @app.route('/api/query', methods=['POST'])
 @require_api_key
 def query():
+    check_open_files()  # 添加检查
     data = request.get_json()
     torname = data.get('torname')
     if not torname:
@@ -607,11 +608,29 @@ def setupLogger():
     logger.add(sys.stdout, format=formatstr)
 
 
+def check_open_files():
+    """检查打开的文件描述符数量"""
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    current = len(os.listdir('/proc/self/fd'))
+    if current > (soft * 0.8):  # 如果超过软限制的80%
+        logger.warning(f"Too many open files: {current}/{soft}")
+        
+def setup_file_limits():
+    """提高文件描述符限制"""
+    try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (max(4096, soft), hard))
+        logger.info(f"File descriptor limits: {soft}/{hard}")
+    except Exception as e:
+        logger.error(f"Failed to set file limits: {e}")
+
+
 def main():
     configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
     myconfig.readConfig(configfile)
     loadMysqlConfig()
     setupLogger()
+    setup_file_limits()  # 添加文件限制设置
     initDatabase()
 
     app.run(host='::', port=5009, debug=True)

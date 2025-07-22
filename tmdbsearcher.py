@@ -1,9 +1,11 @@
-
 from tmdbv3api import TMDb, Movie, TV, Search, Find
 from imdb import Cinemagoer
 import re
 import time
 from loguru import logger
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 def tryint(instr):
     try:
@@ -21,20 +23,88 @@ class TMDbSearcher():
         else:
             self.tmdb = None
 
+        # 创建长连接 session
+        self.session = requests.Session()
+        
+        # 配置重试策略
+        retries = Retry(total=3,
+                       backoff_factor=0.5,
+                       status_forcelist=[500, 502, 503, 504])
+        
+        # 配置连接池
+        self.session.mount('https://', HTTPAdapter(max_retries=retries,
+                                                 pool_connections=10,
+                                                 pool_maxsize=10,
+                                                 pool_block=False))
+
+    def __del__(self):
+        """确保 session 被关闭"""
+        self.session.close()
+
+
+    def _make_request(self, url, params=None):
+        """统一的请求处理"""
+        try:
+            with self.session.get(url, params=params, timeout=10) as response:
+                response.raise_for_status()
+                return response.json()
+        except Exception as e:
+            logger.error(f"TMDb API request failed: {str(e)}")
+            return None
+
 
     def searchTMDbByTMDbId(self, torinfo):
-        r = False
-        if torinfo.tmdb_cat == 'tv':
-            r = self.searchTMDbByTMDbIdTv(torinfo)
-        elif torinfo.tmdb_cat == 'movie':
-            r = self.searchTMDbByTMDbIdMovie(torinfo)
+        """使用新的请求处理方法"""
+        if not torinfo.tmdb_id:
+            return None
+            
+        params = {
+            'api_key': self.tmdb.api_key,
+            'language': self.tmdb.language
+        }
+        
+        url = f'https://api.themoviedb.org/3/{torinfo.tmdb_cat}/{torinfo.tmdb_id}'
+        result = self._make_request(url, params)
+        
+        if result:
+            self._update_torinfo(torinfo, result)
+            return True
+        return False
+
+    def _update_torinfo(self, torinfo, result):
+        if result:
+            if hasattr(result, 'name'):
+                torinfo.tmdb_title = result.name
+                # print('name: ' + result.name)
+            elif hasattr(result, 'original_name'):
+                torinfo.tmdb_title = result.original_name
+                # print('original_name: ' + result.original_name)
+            torinfo.tmdb_id = result.id
+            torinfo.tmdb_cat = 'tv' if 'tv' in result.__class__.__name__.lower() else 'movie'
+            if hasattr(result, 'original_language'):
+                if result.original_language == 'zh':
+                    torinfo.original_language = 'cn'
+                else:
+                    torinfo.original_language = result.original_language
+            if hasattr(result, 'popularity'):
+                torinfo.popularity = result.popularity
+            if hasattr(result, 'poster_path'):
+                torinfo.poster_path = result.poster_path
+            if hasattr(result, 'first_air_date'):
+                torinfo.year = self.getYear(result.first_air_date)
+                torinfo.release_air_date = result.first_air_date
+            elif hasattr(result, 'release_date'):
+                torinfo.year = self.getYear(result.release_date)
+                torinfo.release_air_date = result.release_date
+            else:
+                torinfo.year = 0
+            if hasattr(result, 'genres'):
+                torinfo.genre_ids = [x['id'] for x in result.genres]
+            if hasattr(result, 'genre_ids'):
+                torinfo.genre_ids = result.genre_ids
+            logger.info('Found [%d]: %s' % (torinfo.tmdb_id, torinfo.tmdb_title))
         else:
-            r = self.searchTMDbByTMDbIdTv(torinfo)
-            if not r:
-                r = self.searchTMDbByTMDbIdMovie(torinfo)
-        if r:
-            r = self.fillTMDbDetails(torinfo)
-        return r
+            logger.info('Not match in tmdb: [%s] ' % (torinfo.tmdb_title))
 
     def searchTMDbByTMDbIdTv(self, torinfo):
         tv = TV(self.tmdb)
