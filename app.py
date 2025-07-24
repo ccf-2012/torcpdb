@@ -222,20 +222,20 @@ def foundTorNameRegexInLocal(torinfo):
             return None
 
         # Convert media_title to SQL LIKE pattern
-        # like_pattern = f"%{torinfo.media_title}%"
-        escaped_title = escape_regex_str(torinfo.media_title)
+        like_pattern = f"%{torinfo.media_title}%"
+        # escaped_title = escape_regex_str(torinfo.media_title)
         
         if torinfo.tmdb_cat == 'movie':
             record = MediaRecord.query.filter(db.and_(
-                # MediaRecord.tmdb_title.like(like_pattern),
-                literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
+                MediaRecord.tmdb_title.like(like_pattern),
+                # literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
                 MediaRecord.tmdb_cat == torinfo.tmdb_cat,
                 MediaRecord.year == torinfo.year,
             )).first()
         else:
             record = MediaRecord.query.filter(db.and_(
-                # MediaRecord.tmdb_title.like(like_pattern),
-                literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
+                MediaRecord.tmdb_title.like(like_pattern),
+                # literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
                 MediaRecord.tmdb_cat == torinfo.tmdb_cat
             )).first()
             
