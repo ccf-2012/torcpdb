@@ -365,31 +365,71 @@ def escape_regex_str(s):
     return ''.join('\\' + c if c in special_chars else c for c in s)
 
 def dupeTorNameRegex(torinfo):
-    try:
-        if not torinfo.media_title or not isinstance(torinfo.media_title, str):
-            logger.warning(f'Invalid media_title: {torinfo.torname}')
-            return False
+    """
+    检查当前torinfo.media_title作为torname_regex是否在数据库中已存在重复
+    
+    Args:
+        torinfo: 包含media_title等属性的对象，media_title将作为新的torname_regex
         
+    Returns:
+        bool: True表示存在重复的torname_regex，False表示不重复
+    """
+    try:
+        # 输入验证
+        if not torinfo.media_title or not isinstance(torinfo.media_title, str):
+            logger.warning(f'Invalid media_title: {getattr(torinfo, "torname", "Unknown")}')
+            return False
+                 
         if not torinfo.tmdb_cat or torinfo.tmdb_cat not in ['movie', 'tv']:
-            logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {torinfo.torname}')
+            logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {getattr(torinfo, "torname", "Unknown")}')
             return False
 
-        # Use simple LIKE pattern instead of regexp
-        like_pattern = f"%{torinfo.media_title}%"
+        # 将要插入的torname_regex就是当前的media_title
+        new_regex_pattern = escape_sql_string(torinfo.media_title.strip())
         
-        record = MediaRecord.query.filter(db.and_(
-            MediaRecord.tmdb_title.like(like_pattern),
-            MediaRecord.tmdb_cat == torinfo.tmdb_cat,
-            MediaRecord.torname_regex.isnot(None)
-        )).first()
+        # 检查数据库中是否已存在相同的torname_regex
+        existing_record = MediaRecord.query.filter(
+            MediaRecord.torname_regex == new_regex_pattern
+        ).first()
         
-        if record:
-            logger.info(f"Found duplicate title pattern: {torinfo.media_title} matches {record.tmdb_title}")
-        return record is not None
-        
+        if existing_record:
+            logger.info(f"Found duplicate torname_regex: '{new_regex_pattern}' already exists in record "
+                       f"ID={existing_record.id}, title='{existing_record.tmdb_title}', cat={existing_record.tmdb_cat}")
+            return True
+        else:
+            logger.debug(f"No duplicate torname_regex found for: '{new_regex_pattern}'")
+            return False
+             
     except Exception as e:
-        logger.error(f'Error in dupeTorNameRegex: {str(e)} for {torinfo.torname}')
+        logger.error(f'Error in dupeTorNameRegex: {str(e)} for {getattr(torinfo, "torname", "Unknown")}')
         return False
+    
+# def dupeTorNameRegex(torinfo):
+#     try:
+#         if not torinfo.media_title or not isinstance(torinfo.media_title, str):
+#             logger.warning(f'Invalid media_title: {torinfo.torname}')
+#             return False
+        
+#         if not torinfo.tmdb_cat or torinfo.tmdb_cat not in ['movie', 'tv']:
+#             logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {torinfo.torname}')
+#             return False
+
+#         # Use simple LIKE pattern instead of regexp
+#         like_pattern = f"%{torinfo.media_title}%"
+        
+#         record = MediaRecord.query.filter(db.and_(
+#             MediaRecord.tmdb_title.like(like_pattern),
+#             MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+#             MediaRecord.torname_regex.isnot(None)
+#         )).first()
+        
+#         if record:
+#             logger.info(f"Found duplicate title pattern: {torinfo.media_title} matches {record.tmdb_title}")
+#         return record is not None
+        
+#     except Exception as e:
+#         logger.error(f'Error in dupeTorNameRegex: {str(e)} for {torinfo.torname}')
+#         return False
 
 
 def saveMediaRecord(torinfo):
