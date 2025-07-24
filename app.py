@@ -1,7 +1,7 @@
 # app.py
 from flask import Flask, request, jsonify, render_template, redirect, abort
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import literal
+from sqlalchemy import text, literal
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import resource  # 添加 resource 模块导入
@@ -215,6 +215,57 @@ def foundTorNameInLocal(torinfo):
     ).first()
     return record.media if record else None
 
+
+# 如果需要转义特殊字符的辅助函数
+def escape_sql_string(value):
+    """转义SQL字符串中的特殊字符"""
+    if not value:
+        return value
+    # 转义单引号
+    return value.replace("'", "''")
+
+
+def foundTorNameRegexInLocal_Optimized(torinfo):
+    """
+    优化版本：结合了安全性和性能
+    """
+    try:
+        if not torinfo.media_title:
+            return None
+
+        # 转义输入字符串以防SQL注入
+        escaped_title = escape_sql_string(torinfo.media_title)
+        
+        if torinfo.tmdb_cat == 'movie':
+            record = MediaRecord.query.filter(db.and_(
+                text(f"'{escaped_title}' REGEXP torname_regex"),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                MediaRecord.year == torinfo.year,
+                MediaRecord.torname_regex.isnot(None),
+                MediaRecord.torname_regex != ''
+            )).first()
+        else:
+            record = MediaRecord.query.filter(db.and_(
+                text(f"'{escaped_title}' REGEXP torname_regex"),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                MediaRecord.torname_regex.isnot(None),
+                MediaRecord.torname_regex != ''
+            )).first()
+            
+        if not record:
+            logger.debug(f'No regex match found for title: {torinfo.media_title}')
+            return None
+            
+        if not record.torname_regex:
+            logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
+            return None
+
+        return record
+        
+    except Exception as e:
+        logger.error(f'Error in foundTorNameRegexInLocal_Optimized: {str(e)} for title "{torinfo.media_title}"')
+        return None
+    
 
 def foundTorNameRegexInLocal(torinfo):
     try:
@@ -450,7 +501,7 @@ def query():
             
     # TMDb 和 IMDb 都没给，先查本地 TorName Regex
     logger.info(f'查找本地 TorName Regex: {torinfo.media_title}')
-    if mrec := foundTorNameRegexInLocal(torinfo):
+    if mrec := foundTorNameRegexInLocal_Optimized(torinfo):
         trec = saveTorrentRecord(mrec, torinfo)
         logger.info(f'LOCAL REGEX: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
         return recordJson(mrec)
