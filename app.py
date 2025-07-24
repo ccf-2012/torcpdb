@@ -385,7 +385,8 @@ def dupeTorNameRegex(torinfo):
             return False
 
         # 将要插入的torname_regex就是当前的media_title
-        new_regex_pattern = escape_sql_string(torinfo.media_title.strip())
+        # new_regex_pattern = escape_sql_string(torinfo.media_title.strip())
+        new_regex_pattern = torinfo.media_title.strip()
         
         # 检查数据库中是否已存在相同的torname_regex
         existing_record = MediaRecord.query.filter(
@@ -393,11 +394,11 @@ def dupeTorNameRegex(torinfo):
         ).first()
         
         if existing_record:
-            logger.info(f"Found duplicate torname_regex: '{new_regex_pattern}' already exists in record "
+            logger.warning(f"Found duplicate torname_regex: '{new_regex_pattern}' already exists in record "
                        f"ID={existing_record.id}, title='{existing_record.tmdb_title}', cat={existing_record.tmdb_cat}")
             return True
         else:
-            logger.debug(f"No duplicate torname_regex found for: '{new_regex_pattern}'")
+            logger.debug(f"No duplicate torname_regex: '{new_regex_pattern}'")
             return False
              
     except Exception as e:
