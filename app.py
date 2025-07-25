@@ -478,7 +478,7 @@ def saveMediaRecord(torinfo):
 @app.route('/api/query', methods=['POST'])
 @require_api_key
 def query():
-    check_open_files()  # 添加检查
+    # check_open_files()  # 添加检查
     data = request.get_json()
     torname = data.get('torname')
     if not torname:
