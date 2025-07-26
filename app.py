@@ -238,7 +238,7 @@ def foundTorNameRegexInLocal_Optimized(torinfo):
         
         if torinfo.tmdb_cat == 'movie':
             record = MediaRecord.query.filter(db.and_(
-                text(f"'{escaped_title}' REGEXP torname_regex"),
+                MediaRecord.torname_regex.op('regexp')(escaped_title),
                 MediaRecord.tmdb_cat == torinfo.tmdb_cat,
                 MediaRecord.year == torinfo.year,
                 MediaRecord.torname_regex.isnot(None),
@@ -246,7 +246,7 @@ def foundTorNameRegexInLocal_Optimized(torinfo):
             )).first()
         else:
             record = MediaRecord.query.filter(db.and_(
-                text(f"'{escaped_title}' REGEXP torname_regex"),
+                MediaRecord.torname_regex.op('regexp')(escaped_title),
                 MediaRecord.tmdb_cat == torinfo.tmdb_cat,
                 MediaRecord.torname_regex.isnot(None),
                 MediaRecord.torname_regex != ''
@@ -473,6 +473,23 @@ def saveMediaRecord(torinfo):
     db.session.commit()
     return mrec
 
+# 查询API接口
+@app.route('/api/test_query', methods=['POST'])
+def test_query():
+    data = request.get_json()
+    torname = data.get('torname')
+    torinfo = TorrentParser.parse(torname)
+    if not torinfo.media_title:
+        logger.error(f'empty: torinfo.media_title ')
+        recordNotfound()
+
+    logger.info(f'查找本地 TorName Regex: {torinfo.media_title}')
+    if mrec := foundTorNameRegexInLocal_Optimized(torinfo):
+        trec = saveTorrentRecord(mrec, torinfo)
+        logger.info(f'LOCAL REGEX: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+        return recordJson(mrec)
+
+    return {"message": "This is a test query"}
 
 # 查询API接口
 @app.route('/api/query', methods=['POST'])
