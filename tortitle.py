@@ -238,26 +238,29 @@ class TorTitle:
             return sstr
 
     def parse0DayMovieName(self, torName):
-        sstr = cutExt(torName)
+        sstr = cutExt(torName.strip())
 
         failsafeTitle = sstr
-
+        sstr = re.sub(r'^【.*】', '', sstr, flags=re.I)
+        sstr = re.sub(r'^[.*]', '', sstr, flags=re.I)
         sstr = re.sub(r'\W(Disney|DSNP|Hami|ATVP|Netflix|NF|KKTV|Amazon|AMZN|HMAX|Friday|\d+fps)\W*WEB-?DL.*$', '', sstr, flags=re.I)
         sstr = re.sub(
             r'\b((UHD)?\s+BluRay|Blu-?ray|720p|1080[pi]|2160p|576i|WEB-DL|\.DVD\.|UHD|WEBRip|HDTV|Director(\'s)?[ .]Cut|REMASTERED|LIMITED|Complete(?=[. -]\d+)|SUBBED|TV Series).*$',
             '',
             sstr,
             flags=re.I)
+        sstr = re.sub(r'\bComplete[\s\.]+(Series|HDTV|4K|1080p|WEB-?DL)\b', '', sstr, flags=re.I)
         sstr = re.sub(r'\[Vol.*\]$', '', sstr, flags=re.I)
 
         sstr = re.sub(r'\W?(IMAX|Extended Cut|Unrated Cut|\d+CD|APE整轨)\b.*$', '', sstr, flags=re.I)
         sstr = re.sub(r'[\[\(](BD\d+|WAV\d*|(CD\-)?FLAC|Live|DSD\s?\d*)\b.*$', '', sstr, flags=re.I)
-        sstr = re.sub(r'^\W?(BDMV|\BDRemux|\bCCTV-4K|\bCCTV\d(HD|K)?|BD\-?\d*|[A-Z]{1,5}TV)\W*', '', sstr, flags=re.I)
+        sstr = re.sub(r'^\W?(BDMV|\BDRemux|\bCCTV-4K|\bCCTV\d+(HD|K)?|BD\-?\d*|[A-Z]{1,5}TV)\W*', '', sstr, flags=re.I)
 
         sstr = re.sub(r'\{[^\}]*\}.*$', '', sstr, flags=re.I)
         sstr = re.sub(r'([\s\.-](\d+)?CD[\.-]WEB|[\s\.-](\d+)?CD[\.-]FLAC|[\s\.-][\[\(\{]FLAC[\]\)\}]).*$', '', sstr, flags=re.I)
         sstr = re.sub(r'\bFLAC\b.*$', '', sstr, flags=re.I)
         sstr = re.sub(r'^[\[\(]\d+[^\)\]]*[\)\]]', '', sstr, flags=re.I)
+        sstr = re.sub(r'^Jade\b', '', sstr, flags=re.I)
         sstr = re.sub(r'^\(\w+\)', '', sstr, flags=re.I)
 
         sstr = re.sub(r'^\W?CC_?\b', '', sstr, flags=re.I)
@@ -333,10 +336,15 @@ class TorTitle:
                     cntitle = m.group(1)
                     if not re.search(r'\s[\-\+]\s', cntitle):
                         sstr = sstr.replace(cntitle, '')
+            # 连续空格只留 一个
             cntitle = re.sub(r' +', ' ', cntitle).strip()
+            # 取第1个空格之前的部分
+            cntitle = re.match(r'^[^ \(\[]*', cntitle).group()
 
         titlestr = bracketToBlank(sstr)
         titlestr = cutAKA(titlestr)
+        if len(titlestr) > 5:
+            titlestr = re.sub(r'part\s?\d+$', '', titlestr, flags=re.I).strip()
         if not containsCJK(titlestr) and len(titlestr) < 3:
             titlestr = bracketToBlank(failsafeTitle)
 
@@ -345,7 +353,18 @@ class TorTitle:
     def parseTorNameMore(self, torName):
         mediaSource, video, audio = '', '', ''
         if m := re.search(r"(?<=(1080p|2160p)\s)(((\w+)\s+)?WEB(-DL)?)|\bWEB(-DL)?\b|\bHDTV\b|((UHD )?(BluRay|Blu-ray))", torName, re.I):
-            mediaSource = m[0].strip()
+            m0 = m[0].strip()
+            if re.search(r'WEB[-]?(DL)?', m0, re.I):
+                mediaSource = 'webdl'
+            elif re.search(r'BLURAY|BLU-RAY', m0, re.I):
+                if re.search(r'x26[45]', torName, re.I):
+                    mediaSource = 'encode'
+                elif re.search(r'remux', torName, re.I):
+                    mediaSource = 'remux'
+                else:
+                    mediaSource = 'bluray'
+            else:
+                mediaSource = m0
         if m := re.search(r"AVC|HEVC(\s(DV|HDR))?|H\.?26[456](\s(HDR|DV))?|x26[45]\s?(10bit)?(HDR)?|DoVi (HDR(10)?)? (HEVC)?", torName, re.I):
             video = m[0].strip()
         if m := re.search(r"DTS-HD MA \d.\d|LPCM\s?\d.\d|TrueHD\s?\d\.\d( Atmos)?|DDP[\s\.]*\d\.\d( Atmos)?|(AAC|FLAC)(\s*\d\.\d)?( Atmos)?|DTS(?!-\w+)|DD\+? \d\.\d", torName, re.I):
