@@ -254,6 +254,12 @@ $(document).ready(function () {
         {
             data: 'torname_regex',
             "width": "15%",
+            "render": function (data, type, row, meta) {
+                if (row.tmdb_cat == 'movie') {
+                    return row.torname_regex + '<br>' + row.year
+                }
+                else return row.torname_regex
+            }
         },
         {
             data: 'torname',
