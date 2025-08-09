@@ -30,7 +30,10 @@
                         </div>
                         <div>
                             <label class="col-form-label">分类:</label>
-                            <input type="text" id="tmdb_cat" name="tmdb_cat" required class="form-control">
+                            <select id="tmdb_cat" name="tmdb_cat" required class="form-select">
+                                <option value="movie">movie</option>
+                                <option value="tv">tv</option>
+                            </select>
                         </div>
                         <div>
                             <label class="col-form-label">TMDB ID:</label>
@@ -114,7 +117,7 @@
         $("#formTitle").val('新增记录')
         $("#torname_regex").val('')
         $("#tmdb_title").val('')
-        $("#tmdb_cat").val('')
+        $("#tmdb_cat").val('movie')
         $("#tmdb_id").val('')
         $("#year").val(0)
         // 显示弹窗
