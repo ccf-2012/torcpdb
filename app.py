@@ -244,6 +244,15 @@ def foundTorNameRegexInLocal_Optimized(torinfo):
                 MediaRecord.torname_regex.isnot(None),
                 MediaRecord.torname_regex != ''
             )).first()
+            if not record and torinfo.year:
+                year = int(torinfo.year)
+                record = MediaRecord.query.filter(db.and_(
+                    MediaRecord.torname_regex.op('regexp')(escaped_title),
+                    MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                    MediaRecord.year.in_([str(year - 1), str(year + 1)]),
+                    MediaRecord.torname_regex.isnot(None),
+                    MediaRecord.torname_regex != ''
+                )).first()
         else:
             record = MediaRecord.query.filter(db.and_(
                 MediaRecord.torname_regex.op('regexp')(escaped_title),
