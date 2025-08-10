@@ -95,7 +95,7 @@ class TorrentParser:
 
         t= TorrentInfo()
         t.tmdb_cat=transFromCCFCat(tc.ccfcat)
-        t.media_title=title
+        t.media_title=cntitle if cntitle else title
         t.tmdb_title = ''
         t.torname=torname
         t.season=season

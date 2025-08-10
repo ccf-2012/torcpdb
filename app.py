@@ -262,7 +262,7 @@ def foundTorNameRegexInLocal_Optimized(torinfo):
             )).first()
             
         if not record:
-            logger.debug(f'No regex match found for title: {torinfo.media_title}')
+            logger.info(f'No regex match found for title: {torinfo.media_title}')
             return None
             
         if not record.torname_regex:
@@ -480,6 +480,7 @@ def saveMediaRecord(torinfo):
     mrec.torrents.append(trec)
     db.session.add(mrec)
     db.session.commit()
+    logger.debug(f"Append new regex: {torinfo.media_title} {torinfo.year if torinfo.tmdb_cat == 'movie' else ''} - {torinfo.tmdb_cat}-{torinfo.tmdb_id}")
     return mrec
 
 # 查询API接口
@@ -514,6 +515,7 @@ def query():
     if not torinfo.media_title:
         logger.error(f'empty: torinfo.media_title ')
         recordNotfound()
+    logger.info(f'torname: {torname}, media_title: {torinfo.media_title}, year: {torinfo.year}')
 
     if 'extitle' in data:
         torinfo.subtitle = data.get('extitle')

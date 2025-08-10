@@ -54,7 +54,7 @@ class TMDbSearcher:
         if hasattr(result, 'genres'):
              torinfo.genre_ids = [g['id'] for g in result.genres]
 
-        logger.info(f'Found [{torinfo.tmdb_cat}-{torinfo.tmdb_id}]: {torinfo.tmdb_title}')
+        logger.success(f'Found [{torinfo.tmdb_cat}-{torinfo.tmdb_id}]: {torinfo.tmdb_title}')
         return True
 
     def searchTMDbByTMDbId(self, torinfo):
@@ -189,7 +189,7 @@ class TMDbSearcher:
                 self.fillTMDbDetails(torinfo)
                 return True
 
-        logger.info(f'TMDb Not found: [{title}] [{cntitle}]')
+        logger.warning(f'TMDb Not found: [{title}] [{cntitle}]')
         return False
 
     def _clean_title(self, title):
