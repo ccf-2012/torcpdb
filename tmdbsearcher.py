@@ -315,6 +315,7 @@ class TMDbSearcher():
 
 
     def _searchTMDb(self, torinfo):
+        torinfo.confidence = 10
         searchList = []
         title = torinfo.media_title
         cntitle = torinfo.subtitle
@@ -340,6 +341,7 @@ class TMDbSearcher():
         if m1 and m1.span(0)[0] > 0:
             cuttitle = cuttitle[:m1.span(0)[0]].strip()
             torinfo.tmdb_cat = 'movie'
+            torinfo.confidence += 5
 
         m2 = re.search(
             r'\b((19\d{2}\b|20\d{2})(-19\d{2}|-20\d{2})?)\b(?!.*\b\d{4}\b.*)',
@@ -350,12 +352,15 @@ class TMDbSearcher():
             cuttitle2 = cuttitle[m2.span(1)[1]:].strip()
 
         if torinfo.season:
+            torinfo.confidence += 30
             searchList = self.selectOrder(cntitle, cuttitle, [('tv', cntitle), ('tv', cuttitle), ('multi', cntitle)])
         elif torinfo.tmdb_cat.lower() == 'tv':
+            torinfo.confidence += 5
             searchList = self.selectOrder(cntitle, cuttitle, [('multi', cntitle), ('tv', cuttitle), ('multi', cuttitle)])
         elif torinfo.tmdb_cat.lower() == 'hdtv':
             searchList = [('multi', cntitle), ('multi', cuttitle)]
         elif torinfo.tmdb_cat.lower() == 'movie':
+            torinfo.confidence += 10
             searchList = self.selectOrder(cntitle, cuttitle, [('movie', cntitle), ('multi', cntitle), ('movie', cuttitle), ('multi', cuttitle)])
         else:
             searchList = [('multi', cntitle), ('multi', cuttitle)]
@@ -365,17 +370,18 @@ class TMDbSearcher():
         for s in searchList:
             if s[0] == 'tv' and s[1]:
                 logger.info('Search TV: ' + s[1])
-
                 # results = search.tv_shows(self.fixTmdbParam({"query": s[1], "year": str(intyear), "page": 1}))
                 results = search.tv_shows(term=s[1], adult=True, release_year=stryear, page=1)
                 if len(results) > 0:
                     result = self.findYearMatch(results, intyear, strict=True)
                     if result:
+                        torinfo.confidence += 30
                         self.saveTmdbTVResultMatch(torinfo, result)
                         return True
                     else:
                         result = self.findYearMatch(results, intyear, strict=False)
                         if result:
+                            torinfo.confidence += 5
                             self.saveTmdbTVResultMatch(torinfo, result)
                             return True
 
@@ -391,11 +397,13 @@ class TMDbSearcher():
                 if len(results) > 0:
                     result = self.findYearMatch(results, intyear, strict=True)
                     if result:
+                        torinfo.confidence += 20
                         self.saveTmdbMovieResult(torinfo, result)
                         return True
                     else:
                         result = self.findYearMatch(results, intyear, strict=False)
                         if result:
+                            torinfo.confidence += 10
                             self.saveTmdbMovieResult(torinfo, result)
                             return True
                 elif intyear > 0:
@@ -404,6 +412,7 @@ class TMDbSearcher():
                     if len(results) > 0:
                         result = self.findYearMatch(results, intyear, strict=False)
                         if result:
+                            torinfo.confidence += 10
                             self.saveTmdbMovieResult(torinfo, result)
                             return True
             elif s[0] == 'multi' and s[1]:
@@ -418,11 +427,13 @@ class TMDbSearcher():
                 if len(results) > 0:
                     result = self.findYearMatch(results, intyear, strict=True)
                     if result:
+                        torinfo.confidence += 15
                         self.saveTmdbMultiResult(torinfo, result)
                         return True
                     else:
                         result = self.findYearMatch(results, intyear, strict=False)
                         if result:
+                            torinfo.confidence += 5
                             self.saveTmdbMultiResult(torinfo, result)
                             return True
                 elif intyear > 0:
@@ -431,11 +442,13 @@ class TMDbSearcher():
                     if len(results) > 0:
                         result = self.findYearMatch(results, intyear, strict=True)
                         if result:
+                            torinfo.confidence += 30
                             self.saveTmdbMultiResult(torinfo, result)
                             return True
                         else:
                             result = self.findYearMatch(results, intyear, strict=False)
                             if result:
+                                torinfo.confidence += 5
                                 self.saveTmdbMultiResult(torinfo, result)
                                 return True
 

@@ -577,8 +577,11 @@ def query():
     if s := ts.searchTMDb(torinfo):
         if mrec := foundTMDbIdInLocal(torinfo.tmdb_cat, torinfo.tmdb_id):
             trec = saveTorrentRecord(mrec, torinfo)
-            logger.info(f'LOCAL BLIND: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+            logger.info(f'LOCAL BLIND: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}. confidence: {torinfo.confidence}')
             return recordJson(mrec)
+        if torinfo.confidence < 30:
+            logger.warning(f'BLIND confidence too low: {torinfo.confidence}, tor: {torinfo.torname} ==> {torinfo.tmdb_title}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+            return recordJson()
         r4 = saveMediaRecord(torinfo)
         if r4:
             logger.info(f'BLIND: {torinfo.torname} ==> {r4.tmdb_title}, {r4.tmdb_cat}-{r4.tmdb_id}')
