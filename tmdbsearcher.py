@@ -144,6 +144,23 @@ class TMDbSearcher:
 
         return None, None
 
+    def _generate_cntitle2(self, cntitle):
+        """Generates a secondary search title (cntitle2) from a Chinese title."""
+        if not cntitle:
+            return ''
+
+        # Case 1: Subtitle after '：'
+        if '：' in cntitle:
+            parts = cntitle.split('：', 1)
+            if len(parts) > 1:
+                return parts[1].strip()
+
+        # Case 2: Title with trailing numbers like "中文123"
+        match = re.match(r'^(.+?)(\d+)', cntitle)
+        if match:
+            return match.group(1).strip()
+        return ''
+
     def _searchTMDb(self, torinfo):
         torinfo.confidence = 0
         title = torinfo.media_title
@@ -152,23 +169,20 @@ class TMDbSearcher:
 
         # Title cleaning
         cuttitle = self._clean_title(title)
+        # Category detection
+        if 'the movie' in cuttitle.lower():
+            torinfo.tmdb_cat = 'movie'
+            torinfo.confidence += 5
+
         cntitle2 = ''
         if cntitle:
             cntitle = self._clean_title(cntitle)
-            if '：' in cntitle:
-                parts = cntitle.split('：', 1)
-                if len(parts) > 1:
-                    # cntitle = parts[0].strip()
-                    cntitle2 = parts[1].strip()
+            cntitle2 = self._generate_cntitle2(cntitle)
         
         torinfo.confidence += len(cuttitle)
         if cntitle:
             torinfo.confidence += 10
 
-        # Category detection
-        if 'the movie' in cuttitle.lower():
-            torinfo.tmdb_cat = 'movie'
-            torinfo.confidence += 5
 
         search_list = self._build_search_list(torinfo, cntitle, cuttitle, cntitle2)
 
