@@ -89,8 +89,8 @@ class TorrentParser:
     def parse(cls, torname: str) -> Optional[TorrentInfo]:
         tc = torcategory.TorCategory(torname)
         tt = tortitle.TorTitle(torname)
-        title, parseYear, season, episode, cntitle = tt.title, tt.yearstr, tt.season, tt.episode, tt.cntitle 
-        mediaSource, videoCodec, audioCodec = tt.parseTorNameMore(torname)
+        title, parseYear, season, episode, cntitle = tt.title, tt.year, tt.season, tt.episode, tt.cntitle 
+        mediaSource, videoCodec, audioCodec = tt.parse_more(torname)
         year = tryint(parseYear)
 
         t= TorrentInfo()
