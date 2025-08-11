@@ -42,6 +42,7 @@ class TorrentInfo:
     overview = ''
     vote_average = 0
     production_countries = ''
+    confidence = 0
 
     def __str__(self) -> str:
         """美化输出格式"""
@@ -88,13 +89,13 @@ class TorrentParser:
     def parse(cls, torname: str) -> Optional[TorrentInfo]:
         tc = torcategory.TorCategory(torname)
         tt = tortitle.TorTitle(torname)
-        title, parseYear, season, episode, cntitle = tt.title, tt.yearstr, tt.season, tt.episode, tt.cntitle 
-        mediaSource, videoCodec, audioCodec = tt.parseTorNameMore(torname)
+        title, parseYear, season, episode, cntitle = tt.title, tt.year, tt.season, tt.episode, tt.cntitle 
+        mediaSource, videoCodec, audioCodec = tt.parse_more(torname)
         year = tryint(parseYear)
 
         t= TorrentInfo()
         t.tmdb_cat=transFromCCFCat(tc.ccfcat)
-        t.media_title=title
+        t.media_title=cntitle if cntitle else title
         t.tmdb_title = ''
         t.torname=torname
         t.season=season

@@ -1,9 +1,10 @@
 # app.py
 from flask import Flask, request, jsonify, render_template, redirect, abort
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import literal
+from sqlalchemy import text, literal
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import resource  # 添加 resource 模块导入
 
 import os, sys, re
 from torinfo import TorrentParser, TorrentInfo
@@ -147,6 +148,7 @@ def apiMediaDbList():
             MediaRecord.tmdb_title.like(f'%{search}%'),
             MediaRecord.tmdb_id.like(f'%{search}%'),
             MediaRecord.imdb_id.like(f'%{search}%'),
+            MediaRecord.torname_regex.like(f'%{search}%'),
         ))
     total_filtered = query.count()
 
@@ -213,26 +215,98 @@ def foundTorNameInLocal(torinfo):
     return record.media if record else None
 
 
-def foundTorNameRegexInLocal(torinfo):
-    if not torinfo.media_title:
-        return None
-    if torinfo.tmdb_cat == 'movie':
-        record = MediaRecord.query.filter(db.and_(
-            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
-            MediaRecord.tmdb_cat == torinfo.tmdb_cat,
-            MediaRecord.year == torinfo.year,
-        )).first()
-    else:
-        record = MediaRecord.query.filter(db.and_(
-            literal(torinfo.media_title).op('regexp')(MediaRecord.torname_regex),
-            MediaRecord.tmdb_cat == torinfo.tmdb_cat
-        )).first()
-        
-    if record and not record.torname_regex:
-        logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
-        return None
+# 如果需要转义特殊字符的辅助函数
+def escape_sql_string(value):
+    """转义SQL字符串中的特殊字符"""
+    if not value:
+        return value
+    # 转义单引号
+    return value.replace("'", "''")
 
-    return record
+
+def foundTorNameRegexInLocal_Optimized(torinfo):
+    """
+    优化版本：结合了安全性和性能
+    """
+    try:
+        if not torinfo.media_title:
+            return None
+
+        # 转义输入字符串以防SQL注入
+        escaped_title = escape_sql_string(torinfo.media_title)
+        
+        if torinfo.tmdb_cat == 'movie':
+            record = MediaRecord.query.filter(db.and_(
+                MediaRecord.torname_regex.op('regexp')(escaped_title),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                MediaRecord.year == torinfo.year,
+                MediaRecord.torname_regex.isnot(None),
+                MediaRecord.torname_regex != ''
+            )).first()
+            if not record and torinfo.year:
+                year = int(torinfo.year)
+                record = MediaRecord.query.filter(db.and_(
+                    MediaRecord.torname_regex.op('regexp')(escaped_title),
+                    MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                    MediaRecord.year.in_([str(year - 1), str(year + 1)]),
+                    MediaRecord.torname_regex.isnot(None),
+                    MediaRecord.torname_regex != ''
+                )).first()
+        else:
+            record = MediaRecord.query.filter(db.and_(
+                MediaRecord.torname_regex.op('regexp')(escaped_title),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                MediaRecord.torname_regex.isnot(None),
+                MediaRecord.torname_regex != ''
+            )).first()
+            
+        if not record:
+            logger.info(f'No regex match found for title: {torinfo.media_title}')
+            return None
+            
+        if not record.torname_regex:
+            logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
+            return None
+
+        return record
+        
+    except Exception as e:
+        logger.error(f'Error in foundTorNameRegexInLocal_Optimized: {str(e)} for title "{torinfo.media_title}"')
+        return None
+    
+
+def foundTorNameRegexInLocal(torinfo):
+    try:
+        if not torinfo.media_title:
+            return None
+
+        # Convert media_title to SQL LIKE pattern
+        like_pattern = f"%{torinfo.media_title}%"
+        # escaped_title = escape_regex_str(torinfo.media_title)
+        
+        if torinfo.tmdb_cat == 'movie':
+            record = MediaRecord.query.filter(db.and_(
+                MediaRecord.tmdb_title.like(like_pattern),
+                # literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+                MediaRecord.year == torinfo.year,
+            )).first()
+        else:
+            record = MediaRecord.query.filter(db.and_(
+                MediaRecord.tmdb_title.like(like_pattern),
+                # literal(escaped_title).op('regexp')(MediaRecord.torname_regex),
+                MediaRecord.tmdb_cat == torinfo.tmdb_cat
+            )).first()
+            
+        if record and not record.torname_regex:
+            logger.error(f'empty torname_regex: {record.tmdb_title}, {record.tmdb_cat}-{record.tmdb_id}')
+            return None
+
+        return record
+        
+    except Exception as e:
+        logger.error(f'Error in foundTorNameRegexInLocal: {str(e)} for title "{torinfo.media_title}"')
+        return None
 
 def foundIMDbIdInLocal(imdb_id):
     record = MediaRecord.query.filter(db.and_(
@@ -265,6 +339,13 @@ def recordNotfound():
 def saveTorrentRecord(mediarecord, torinfo):
     if not torinfo.infolink:
         return None
+
+    # 检查是否已存在相同的 torname
+    existing_torrent = TorrentRecord.query.filter_by(torname=torinfo.torname).first()
+    if existing_torrent:
+        logger.warning(f"TorrentRecord with torname '{torinfo.torname}' already exists. Skipping.")
+        return existing_torrent  # 或者返回 None，取决于你希望如何处理重复记录
+
     trec = TorrentRecord(
         torname=torinfo.torname,
         infolink=torinfo.infolink,
@@ -286,11 +367,89 @@ def normalizeRegex(regexstr):
     
     return regexstr
 
+def escape_regex_str(s):
+    """Escape special regex characters in string for MySQL regexp comparison"""
+    special_chars = '[\\^$.|?*+(){}'
+    return ''.join('\\' + c if c in special_chars else c for c in s)
+
+def dupeTorNameRegex(torinfo):
+    """
+    检查当前torinfo.media_title作为torname_regex是否在数据库中已存在重复
+    
+    Args:
+        torinfo: 包含media_title等属性的对象，media_title将作为新的torname_regex
+        
+    Returns:
+        bool: True表示存在重复的torname_regex，False表示不重复
+    """
+    try:
+        # 输入验证
+        if not torinfo.media_title or not isinstance(torinfo.media_title, str):
+            logger.warning(f'Invalid media_title: {getattr(torinfo, "torname", "Unknown")}')
+            return False
+                 
+        if not torinfo.tmdb_cat or torinfo.tmdb_cat not in ['movie', 'tv']:
+            logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {getattr(torinfo, "torname", "Unknown")}')
+            return False
+
+        # 将要插入的torname_regex就是当前的media_title
+        # new_regex_pattern = escape_sql_string(torinfo.media_title.strip())
+        new_regex_pattern = torinfo.media_title.strip()
+        
+        # 检查数据库中是否已存在相同的torname_regex
+        existing_record = MediaRecord.query.filter(
+            MediaRecord.torname_regex == new_regex_pattern
+        ).first()
+        
+        if existing_record:
+            logger.warning(f"Found duplicate torname_regex: '{new_regex_pattern}' already exists in record "
+                       f"ID={existing_record.id}, title='{existing_record.tmdb_title}', cat={existing_record.tmdb_cat}")
+            return True
+        else:
+            logger.debug(f"No duplicate torname_regex: '{new_regex_pattern}'")
+            return False
+             
+    except Exception as e:
+        logger.error(f'Error in dupeTorNameRegex: {str(e)} for {getattr(torinfo, "torname", "Unknown")}')
+        return False
+    
+# def dupeTorNameRegex(torinfo):
+#     try:
+#         if not torinfo.media_title or not isinstance(torinfo.media_title, str):
+#             logger.warning(f'Invalid media_title: {torinfo.torname}')
+#             return False
+        
+#         if not torinfo.tmdb_cat or torinfo.tmdb_cat not in ['movie', 'tv']:
+#             logger.warning(f'Invalid tmdb_cat: {torinfo.tmdb_cat} for {torinfo.torname}')
+#             return False
+
+#         # Use simple LIKE pattern instead of regexp
+#         like_pattern = f"%{torinfo.media_title}%"
+        
+#         record = MediaRecord.query.filter(db.and_(
+#             MediaRecord.tmdb_title.like(like_pattern),
+#             MediaRecord.tmdb_cat == torinfo.tmdb_cat,
+#             MediaRecord.torname_regex.isnot(None)
+#         )).first()
+        
+#         if record:
+#             logger.info(f"Found duplicate title pattern: {torinfo.media_title} matches {record.tmdb_title}")
+#         return record is not None
+        
+#     except Exception as e:
+#         logger.error(f'Error in dupeTorNameRegex: {str(e)} for {torinfo.torname}')
+#         return False
+
+
 def saveMediaRecord(torinfo):
     if not torinfo.media_title:
         logger.error(f'empty media_title: {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
         return None
 
+    if dupeTorNameRegex(torinfo):
+        logger.error(f'regex dupe: {torinfo.media_title} - {torinfo.torname}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+        return None
+    
     gidstr = ','.join(str(e) for e in torinfo.genre_ids)
     trec = TorrentRecord(
         torname=torinfo.torname,
@@ -320,13 +479,32 @@ def saveMediaRecord(torinfo):
     mrec.torrents.append(trec)
     db.session.add(mrec)
     db.session.commit()
+    logger.debug(f"Append new regex: {torinfo.media_title} {torinfo.year if torinfo.tmdb_cat == 'movie' else ''} - {torinfo.tmdb_cat}-{torinfo.tmdb_id}")
     return mrec
 
+# 查询API接口
+@app.route('/api/test_query', methods=['POST'])
+def test_query():
+    data = request.get_json()
+    torname = data.get('torname')
+    torinfo = TorrentParser.parse(torname)
+    if not torinfo.media_title:
+        logger.error(f'empty: torinfo.media_title ')
+        recordNotfound()
+
+    logger.info(f'查找本地 TorName Regex: {torinfo.media_title}')
+    if mrec := foundTorNameRegexInLocal_Optimized(torinfo):
+        trec = saveTorrentRecord(mrec, torinfo)
+        logger.info(f'LOCAL REGEX: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+        return recordJson(mrec)
+
+    return {"message": "This is a test query"}
 
 # 查询API接口
 @app.route('/api/query', methods=['POST'])
 @require_api_key
 def query():
+    # check_open_files()  # 添加检查
     data = request.get_json()
     torname = data.get('torname')
     if not torname:
@@ -336,6 +514,7 @@ def query():
     if not torinfo.media_title:
         logger.error(f'empty: torinfo.media_title ')
         recordNotfound()
+    logger.info(f'>> torname: {torname}, media_title: {torinfo.media_title}, year: {torinfo.year}')
 
     if 'extitle' in data:
         torinfo.subtitle = data.get('extitle')
@@ -358,6 +537,7 @@ def query():
     # 直接给了TMDb 
     if 'tmdbstr' in data:
         # 直接给了TMDb 先查本地
+        logger.info(f'查找本地 TMDbId: {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
         if mrec := foundTMDbIdInLocal(torinfo.tmdb_cat, torinfo.tmdb_id):
             trec = saveTorrentRecord(mrec, torinfo)
             logger.info(f'LOCAL TMDb: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
@@ -370,8 +550,10 @@ def query():
                 return recordJson(r2)
             else:
                 return recordNotfound()
-    if 'imdbid' in data:
+    # 有 IMDbId 且是电影
+    if 'imdbid' in data and torinfo.tmdb_cat == 'movie':
         # 有IMDb 先查本地
+        logger.info(f'电影，查找本地 IMDbId: {data.get("imdbid")}')
         if mrec := foundIMDbIdInLocal(data.get('imdbid')):
             trec = saveTorrentRecord(mrec, torinfo)
             logger.info(f'LOCAL IMDb: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
@@ -386,16 +568,21 @@ def query():
                 return recordNotfound()
             
     # TMDb 和 IMDb 都没给，先查本地 TorName Regex
-    if mrec := foundTorNameRegexInLocal(torinfo):
+    logger.info(f'查找本地 TorName Regex: {torinfo.media_title}')
+    if mrec := foundTorNameRegexInLocal_Optimized(torinfo):
         trec = saveTorrentRecord(mrec, torinfo)
         logger.info(f'LOCAL REGEX: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
         return recordJson(mrec)
     # TMDb 和 IMDb 都没给，本地 TorName Regex 没找到，去 Blind 搜
+    logger.info(f'查找 TMDb, title: {torinfo.media_title}, Subtitle: {torinfo.subtitle}')
     if s := ts.searchTMDb(torinfo):
         if mrec := foundTMDbIdInLocal(torinfo.tmdb_cat, torinfo.tmdb_id):
             trec = saveTorrentRecord(mrec, torinfo)
-            logger.info(f'LOCAL BLIND: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}')
+            logger.info(f'LOCAL BLIND: {torinfo.torname} ==> {mrec.tmdb_title}, {mrec.tmdb_cat}-{mrec.tmdb_id}. confidence: {torinfo.confidence}')
             return recordJson(mrec)
+        if torinfo.confidence < 30:
+            logger.warning(f'BLIND confidence too low: {torinfo.confidence}, tor: {torinfo.torname} ==> {torinfo.tmdb_title}, {torinfo.tmdb_cat}-{torinfo.tmdb_id}')
+            return recordJson()
         r4 = saveMediaRecord(torinfo)
         if r4:
             logger.info(f'BLIND: {torinfo.torname} ==> {r4.tmdb_title}, {r4.tmdb_cat}-{r4.tmdb_id}')
@@ -549,6 +736,23 @@ def setupLogger():
     formatstr = "{time:YYYY-MM-DD HH:mm:ss} | <level>{level: <8}</level> | - <level>{message}</level>"
     logger.add(LOG_FILE_NAME, format=formatstr, rotation="500 MB") 
     logger.add(sys.stdout, format=formatstr)
+
+
+def check_open_files():
+    """检查打开的文件描述符数量"""
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    current = len(os.listdir('/proc/self/fd'))
+    if current > (soft * 0.8):  # 如果超过软限制的80%
+        logger.warning(f"Too many open files: {current}/{soft}")
+        
+def setup_file_limits():
+    """提高文件描述符限制"""
+    try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (max(4096, soft), hard))
+        logger.info(f"File descriptor limits: {soft}/{hard}")
+    except Exception as e:
+        logger.error(f"Failed to set file limits: {e}")
 
 
 def main():
