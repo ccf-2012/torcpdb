@@ -148,17 +148,22 @@ class TMDbSearcher:
         """Generates a secondary search title (cntitle2) from a Chinese title."""
         if not cntitle:
             return ''
-
         # Case 1: Subtitle after '：'
         if '：' in cntitle:
             parts = cntitle.split('：', 1)
             if len(parts) > 1:
                 return parts[1].strip()
-
-        # Case 2: Title with trailing numbers like "中文123"
+        # Case 2: 普契尼《托斯卡》
+        if '《' in cntitle:
+            return cntitle.split('《', 1)[1].split('》')[0]
+        # Case 3: Title with trailing numbers like "中文123"
         match = re.match(r'^(.+?)(\d+)', cntitle)
         if match:
             return match.group(1).strip()
+        # Case 4:  攻壳机动队真人版, 阿拉丁真人版
+        if '真人版' in cntitle:
+            return cntitle.split('真人版')[0]
+
         return ''
 
     def _searchTMDb(self, torinfo):
