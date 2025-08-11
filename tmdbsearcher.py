@@ -152,8 +152,14 @@ class TMDbSearcher:
 
         # Title cleaning
         cuttitle = self._clean_title(title)
+        cntitle2 = ''
         if cntitle:
             cntitle = self._clean_title(cntitle)
+            if '：' in cntitle:
+                parts = cntitle.split('：', 1)
+                if len(parts) > 1:
+                    # cntitle = parts[0].strip()
+                    cntitle2 = parts[1].strip()
         
         torinfo.confidence += len(cuttitle)
         if cntitle:
@@ -164,7 +170,7 @@ class TMDbSearcher:
             torinfo.tmdb_cat = 'movie'
             torinfo.confidence += 5
 
-        search_list = self._build_search_list(torinfo, cntitle, cuttitle)
+        search_list = self._build_search_list(torinfo, cntitle, cuttitle, cntitle2)
 
         for category, term in search_list:
             if not term:
@@ -205,19 +211,28 @@ class TMDbSearcher:
         title = self.replaceRomanNum(title)
         return title.strip()
 
-    def _build_search_list(self, torinfo, cntitle, cuttitle):
+    def _build_search_list(self, torinfo, cntitle, cuttitle, cntitle2):
         # Builds the list of searches to perform
+        searches = []
         if torinfo.season:
             torinfo.confidence += 10
-            return self.selectOrder(cntitle, cuttitle, [('tv', cntitle), ('tv', cuttitle), ('multi', cntitle)])
+            searches = [('tv', cntitle), ('tv', cuttitle), ('multi', cntitle), ('multi', cntitle2)]
         elif torinfo.tmdb_cat == 'tv':
             torinfo.confidence += 5
-            return self.selectOrder(cntitle, cuttitle, [('multi', cntitle), ('tv', cuttitle), ('multi', cuttitle)])
+            searches = [('tv', cntitle), ('multi', cuttitle), ('multi', cntitle2)]
         elif torinfo.tmdb_cat == 'movie':
             torinfo.confidence += 5
-            return self.selectOrder(cntitle, cuttitle, [('movie', cntitle), ('multi', cntitle), ('movie', cuttitle), ('multi', cuttitle)])
+            searches = [('movie', cntitle),  ('movie', cuttitle), ('movie', cntitle2), ('multi', cntitle), ('multi', cuttitle)]
         else:
-            return [('multi', cntitle), ('multi', cuttitle), ('tv', cuttitle), ('movie', cuttitle)]
+            searches = [('multi', cntitle), ('multi', cuttitle), ('multi', cntitle2), ('tv', cuttitle), ('movie', cuttitle)]
+
+        # 过滤掉搜索关键字为空的条目，并移除重复的条目
+        unique_list = list(dict.fromkeys(item for item in searches if item[1]))
+
+        if len(cntitle) < 3 and len(cuttitle) > 5:
+            # 如果cntitle太短，则优先使用cuttitle
+            return sorted(unique_list, key=lambda x: x[1] != cuttitle)
+        return unique_list
 
     def searchTMDb(self, torinfo):
         try:
@@ -245,12 +260,6 @@ class TMDbSearcher:
         for roman, arabic in roman_map.items():
             titlestr = re.sub(f'\\b{roman}\\b', arabic, titlestr, flags=re.IGNORECASE)
         return titlestr
-
-    def selectOrder(self, cntitle, cuttitle, search_list):
-        if len(cntitle) < 3 and len(cuttitle) > 5:
-            # Prioritize cuttitle if cntitle is too short
-            return sorted(search_list, key=lambda x: x[1] != cuttitle)
-        return search_list
 
     def findYearMatch(self, results, year, strict=True):
         matchList = []
