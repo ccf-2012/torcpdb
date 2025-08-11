@@ -515,7 +515,7 @@ def query():
     if not torinfo.media_title:
         logger.error(f'empty: torinfo.media_title ')
         recordNotfound()
-    logger.info(f'torname: {torname}, media_title: {torinfo.media_title}, year: {torinfo.year}')
+    logger.info(f'>> torname: {torname}, media_title: {torinfo.media_title}, year: {torinfo.year}')
 
     if 'extitle' in data:
         torinfo.subtitle = data.get('extitle')
